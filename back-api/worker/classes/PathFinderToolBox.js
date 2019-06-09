@@ -60,11 +60,11 @@ module.exports = function(Graph, MFalcon, Empire){
 			var chanceToBeCaptured = 0;
 			var riskCount = 0;
 
-			for(var day in timeToPosition){
-				var currPosition = timeToPosition[day].planet;
+			for(let day in timeToPosition){
+				let currPosition = timeToPosition[day].planet;
 				lWinston.log(`Millenium Falcon will be at ${currPosition} on day ${day}.`);
 
-				var isThereBhThisDay = Graph.isThereBhOnPlanet(currPosition, day);
+				let isThereBhThisDay = Graph.isThereBhOnPlanet(currPosition, day);
 				if(isThereBhThisDay){
 					riskCount++;
 					lWinston.log(`BountyHunters will be at ${currPosition} on day ${day}. Risk to be captured increased.`);
@@ -125,14 +125,14 @@ module.exports = function(Graph, MFalcon, Empire){
 	this.generateRouteIdentifier = function(route, timeToPosition, liteIdentifier){
 		try{
 			var buildObj = {};
-			for(var i in timeToPosition){
+			for(let i in timeToPosition){
 				if(!buildObj[timeToPosition[i].planet])	buildObj[timeToPosition[i].planet] = { refuel: 0, wait: 0, dayIn: i, dayOut: i };
 				if(timeToPosition[i].type == "refueling") buildObj[timeToPosition[i].planet].refuel = 1;
 				if(timeToPosition[i].type == "waiting/refueling") buildObj[timeToPosition[i].planet].wait++;
 				buildObj[timeToPosition[i].planet].dayOut = i;
 			}
 
-			for(var i in buildObj){
+			for(let i in buildObj){
 				if(buildObj[i].wait > 0 
 					&& buildObj[i].refuel == 0
 					&& i != MFalcon.departure){
@@ -145,8 +145,8 @@ module.exports = function(Graph, MFalcon, Empire){
 			if(route.path.length == 1){
 				pathString = `|${route.path[i]}|`;
 			}else{
-				for(var i in route.path){
-					var displayStr = `${route.path[i]}`;
+				for(let i in route.path){
+					let displayStr = `${route.path[i]}`;
 					if(buildObj[route.path[i]].refuel == 1) displayStr += `[R]`;
 					if(buildObj[route.path[i]].wait > 0) displayStr += `[W${buildObj[route.path[i]].wait}]`;
 					(!liteIdentifier) ? displayStr += `(dIn:${buildObj[route.path[i]].dayIn}`+((i != route.path.length-1) ? `;dOut:${buildObj[route.path[i]].dayOut})` : `)`) : '';

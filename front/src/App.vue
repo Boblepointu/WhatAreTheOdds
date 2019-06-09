@@ -142,6 +142,7 @@
 					var forced = "http://127.0.0.1:3000"
 					var res = await axios.post(forced+'/compute', { data: this.empireDataJson });
 					this.results = res.data;
+					console.log("res.data.length", res.data.length)
 					this.resultsFetched = true;
 				}catch(err){ 
 					if(err.message){

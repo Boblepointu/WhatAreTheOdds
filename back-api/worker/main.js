@@ -34,8 +34,7 @@ const main = async function(){
 	var MFalcon = DataSet.MFalcon;
 	var Empire = DataSet.Empire;
 	var Universe = DataSet.Universe;
-
-	if(!process.argv[0]){
+	if(!process.argv[2]){
 		var graph = await BuildGraph(Universe, Empire.bounty_hunters);
 		winston.log(`We were inited from the command line.`);
 		var pathFinder = new PathFinder(MFalcon, Empire, graph, HeapSizeLevel1, HeapSizeLevel2);
@@ -67,13 +66,16 @@ const main = async function(){
 		var graph = await BuildGraph(Universe, Empire.bounty_hunters);
 		var pathFinder = new PathFinder(MFalcon, Empire, graph, HeapSizeLevel1, HeapSizeLevel2);
 		var resultArray = pathFinder.computePath();
+		try{
+			winston.log(`Sending results to api process.`);
+			process.send(resultArray);
+			clearTimeout(hardTimeoutHandle);
 
-		winston.log(`Sending results to api process.`);
-		process.send(resultArray);
-		clearTimeout(hardTimeoutHandle);
-
-		winston.log(`Process will exit in 5 seconds.`);
-		setTimeout(()=>{}, 5000);
+			winston.log(`Process will exit in 5 seconds.`);
+			setInterval(process.exit, 5000);
+		}catch(err){
+			console.log(err);
+		}
 	}
 }
 

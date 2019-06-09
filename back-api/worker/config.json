@@ -1,6 +1,6 @@
 {
-	"HeapSizeLevel1": 150
-	, "HeapSizeLevel2": 150
+	"HeapSizeLevel1": 2000
+	, "HeapSizeLevel2": 2000
 	, "DataSet": "live"
 	, "HardTimeoutSec": 1000
 	, "LogLevel": 2

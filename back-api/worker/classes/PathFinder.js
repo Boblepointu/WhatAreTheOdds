@@ -1,7 +1,6 @@
 "use strict";
 
 module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2){
-	const _ = require('underscore');
 	const Logger = require('./Logger.js');
 	const PathFinderToolBox = require('./PathFinderToolBox.js');
 	const pathFinderToolBox = new PathFinderToolBox(Graph, MFalcon, Empire);
@@ -29,7 +28,6 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 			route.liteIdentifier = pathFinderToolBox.generateRouteIdentifier(route, timeToPosition, true);
 			route.travelable = pathFinderToolBox.isRouteTravelable(route);
 			route.perfect = (route.score.chanceToMakeIt == 100) ? true : false;
-			route.timeToPosition = timeToPosition;
 
 			return route;
 		}catch(err){ throw err; }
@@ -44,13 +42,12 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 			lWinston.log(`Last position of route ${route.liteIdentifier} is ${lastRoutePlanet}. There is ${Graph.planets[lastRoutePlanet].links.length} available positions to go next.`);
 
 			var links = Graph.planets[lastRoutePlanet].links;
-			for(var i in links){
-				var nextPosition = links[i].planet;
-				var newRoute = { 
+			for(let i in links){
+				let nextPosition = links[i].planet;
+				let newRoute = { 
 					path: route.path.slice(0)
 					, linkNumberMap: route.linkNumberMap.slice(0)
 					, waitMap: route.waitMap.slice(0)
-					, timeToPosition: Object.assign({}, route.timeToPosition)
 					, score: { aggregatedScore: route.score.aggregatedScore
 							, distanceScore: route.score.distanceScore
 							, chanceToMakeIt: route.score.chanceToMakeIt }
@@ -83,8 +80,8 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 		try{
 			var improvedRoutes = [];
 
-			for(var i in route.waitMap){
-				var newRoute = {
+			for(let i in route.waitMap){
+				let newRoute = {
 					path: route.path.slice(0)
 					, linkNumberMap: route.linkNumberMap.slice(0)
 					, waitMap: route.waitMap.slice(0)
@@ -98,8 +95,7 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 					, identifier: route.identifier
 					, liteIdentifier: route.liteIdentifier };
 				newRoute.waitMap[i] = newRoute.waitMap[i]+1;
-				newRoute.timeToPosition = pathFinderToolBox.computeTimeToPosition(newRoute);
-				
+
 				updateRoute(newRoute);
 
 				improvedRoutes.push(newRoute);
@@ -111,7 +107,8 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 	var findValidPathes = function(){
 		var lWinston = Logger(`PathFinder-computeLevel1-findValidPathes`, 3);
 		try{
-			while(_.filter(level1RouteArray, route => { return route.complete; }).length != level1RouteArray.length){
+			var allCompleteRoutes = [];
+			do{
 				level1RoundCount++;
 				lWinston.log(``);
 				lWinston.log(`*******************************************************`);
@@ -121,8 +118,8 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 				lWinston.log(`*******************************************************`);
 				lWinston.log(``);
 
-				var extendedRoutesArray = [];
-				var cleanedRoutesArray = [];
+				let extendedRoutesArray = [];
+				let cleanedRoutesArray = [];
 
 				lWinston.log(`Updating score, identifier, complete, travelable and perfect flag for each route.`);
 				for(var i in level1RouteArray){
@@ -148,7 +145,7 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 				lWinston.log(`Extending available uncomplete routes.`);
 				for(var i in routesToExtendArray){
 					lWinston.log(`Finding out which possibilities we have to extend the current route (${routesToExtendArray[i].liteIdentifier}).`);
-					var extendedRoutes = extendRoute(routesToExtendArray[i]);
+					let extendedRoutes = extendRoute(routesToExtendArray[i]);
 					extendedRoutesArray = extendedRoutesArray.concat(extendedRoutes);
 				}
 
@@ -162,9 +159,12 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 					}
 
 				lWinston.log(`Removing duplicated routes.`);
-				cleanedRoutesArray = _.uniq(cleanedRoutesArray, route => {
-					return route.identifier;
-				});
+				let deduplicateObj = {};
+				for(let i=0; i < cleanedRoutesArray.length; i++)
+					deduplicateObj[cleanedRoutesArray[i].identifier] = cleanedRoutesArray[i];
+				cleanedRoutesArray = [];
+				for(let i in deduplicateObj)
+					cleanedRoutesArray.push(deduplicateObj[i]);				
 
 				lWinston.log(`Sorting the resulting route array odds to make it then by route length.`);
 				var cmp = (a, b) => (a < b) - (a > b);
@@ -175,15 +175,25 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 				lWinston.log(`Discarding routes with the lowest score to fit in the maximum search stack size (${HeapSizeLevel1}).`);
 				if(cleanedRoutesArray.length > HeapSizeLevel1){
 					lWinston.log(`There is ${cleanedRoutesArray.length} routes available in the stack. That's more than the allowed search size (${HeapSizeLevel1}). Reducing resulting search array.`);
-					var toDiscardArray = cleanedRoutesArray.slice(HeapSizeLevel1, cleanedRoutesArray.length-1);
+					let toDiscardArray = cleanedRoutesArray.slice(HeapSizeLevel1, cleanedRoutesArray.length-1);
 					level1DiscardedRouteArray = level1DiscardedRouteArray.concat(toDiscardArray);
+					level1DiscardedRouteArray.sort((a, b) => {
+						return cmp(a.score.chanceToMakeIt, b.score.chanceToMakeIt) || cmp(a.score.distanceScore, b.score.distanceScore);
+					});
+					level1DiscardedRouteArray = level1DiscardedRouteArray.slice(0, HeapSizeLevel1);
 					cleanedRoutesArray = cleanedRoutesArray.slice(0, HeapSizeLevel1);
 				}
 
 				lWinston.log(`There is ${cleanedRoutesArray.length} routes available in the stack.`);
 
 				level1RouteArray = cleanedRoutesArray;
-			}
+
+				var allCompleteRoutes = [];
+				for(let i in level1RouteArray)
+					if(level1RouteArray[i].complete)
+						allCompleteRoutes.push(level1RouteArray[i]);
+
+			}while(allCompleteRoutes.length != level1RouteArray.length);
 		}catch(err){ throw err; }
 	}
 
@@ -202,19 +212,19 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 				lWinston.log(`*******************************************************`);
 				lWinston.log(``);
 
-				var improvedRoutesArray = [];
-				var cleanedRoutesArray = [];
+				let improvedRoutesArray = [];
+				let cleanedRoutesArray = [];
 
 				lWinston.log(`Updating score, identifier, complete, travelable and perfect flag for each route.`);
 				for(var i in level2RouteArray){
-					var currRoute = level2RouteArray[i];
+					let currRoute = level2RouteArray[i];
 					if(currRoute.perfect) continue;
 
 					updateRoute(currRoute);
 				}
 
 				lWinston.log(`Defining which routes we can improve.`);
-				var routesToImproveArray = [];
+				let routesToImproveArray = [];
 				for(var i in level2RouteArray)
 					if(level2RouteArray[i].travelable && !level2RouteArray[i].perfect)
 						routesToImproveArray.push(level2RouteArray[i]);
@@ -229,7 +239,7 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 				lWinston.log(`Improving available routes.`);
 				for(var i in routesToImproveArray){
 					lWinston.log(`Finding out which possibilities we have to improve the current route (${routesToImproveArray[i].liteIdentifier}).`);
-					var improvedRoutes = improveRoute(routesToImproveArray[i]);
+					let improvedRoutes = improveRoute(routesToImproveArray[i]);
 					improvedRoutesArray = improvedRoutesArray.concat(improvedRoutes);
 				}
 
@@ -243,12 +253,15 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 					}
 
 				lWinston.log(`Removing duplicated routes.`);
-				cleanedRoutesArray = _.uniq(cleanedRoutesArray, route => {
-					return route.identifier+route.waitMap.toString();
-				});
+				let deduplicateObj = {};
+				for (let i=0; i < cleanedRoutesArray.length; i++)
+					deduplicateObj[cleanedRoutesArray[i].identifier+cleanedRoutesArray[i].waitMap.toString()] = cleanedRoutesArray[i];
+				cleanedRoutesArray = [];
+				for (let i in deduplicateObj)
+					cleanedRoutesArray.push(deduplicateObj[i]);
 
 				lWinston.log(`Sorting the resulting route array odds to make it then by route length.`);
-				var cmp = (a, b) => (a < b) - (a > b);
+				let cmp = (a, b) => (a < b) - (a > b);
 				cleanedRoutesArray.sort((a, b) => {
 					return cmp(a.score.chanceToMakeIt, b.score.chanceToMakeIt) || cmp(a.score.distanceScore, b.score.distanceScore);
 				});
@@ -256,8 +269,13 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 				lWinston.log(`Discarding routes with the lowest score to fit in the maximum search stack size (${HeapSizeLevel2}).`);
 				if(cleanedRoutesArray.length > HeapSizeLevel2){
 					lWinston.log(`There is ${cleanedRoutesArray.length} routes available in the stack. That's more than the allowed search size (${HeapSizeLevel2}). Reducing resulting search array.`);
-					var toDiscardArray = cleanedRoutesArray.slice(HeapSizeLevel2, cleanedRoutesArray.length-1);
+					let toDiscardArray = cleanedRoutesArray.slice(HeapSizeLevel2, cleanedRoutesArray.length-1);
 					level2DiscardedRouteArray = level2DiscardedRouteArray.concat(toDiscardArray);
+					level2DiscardedRouteArray.sort((a, b) => {
+						return cmp(a.score.chanceToMakeIt, b.score.chanceToMakeIt) || cmp(a.score.distanceScore, b.score.distanceScore);
+					});
+					if(level2DiscardedRouteArray.length > HeapSizeLevel2)
+						level2DiscardedRouteArray = level2DiscardedRouteArray.slice(0, HeapSizeLevel2);
 					cleanedRoutesArray = cleanedRoutesArray.slice(0, HeapSizeLevel2);
 				}
 
@@ -266,8 +284,8 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 				if(cleanedRoutesArray.length > 0)
 					level2RouteArray = cleanedRoutesArray;
 
-				var newRoundIdentifierSum = "";
-				for(var i in level2RouteArray)
+				let newRoundIdentifierSum = "";
+				for(let i in level2RouteArray)
 					newRoundIdentifierSum += level2RouteArray[i].identifier;
 
 				if(lastRoundIdentifierSum == newRoundIdentifierSum) countSimilar++;
@@ -276,7 +294,12 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 					break;
 				}
 
-				if(_.filter(level2RouteArray, route => { return route.perfect; }).length == level2RouteArray.length){
+				let allPerfectRoutes = [];
+				for(let i in level2RouteArray)
+					if(level2RouteArray[i].perfect)
+						allPerfectRoutes.push(level2RouteArray[i]);
+
+				if(allPerfectRoutes.length == level2RouteArray.length){
 					lWinston.log(`We got a full panel of perfect routes. Break !`);
 					break;
 				}
@@ -365,7 +388,7 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 			lWinston.log(`Finding out the best routes, level 2.`);
 
 			lWinston.log(`Initialising the search with all the routes computed level 1.`);
-			level2RouteArray = level1RouteArray.slice(0);
+			level2RouteArray = level1RouteArray;
 
 			lWinston.log(`Starting the search loop.`);
 			level2RoundCount = 0;
@@ -381,17 +404,30 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 				findBestPathes();
 				
 				lWinston.log(`Removing duplicated routes (waitMap && refuelMap might have crossed).`);
-				level2RouteArray = _.uniq(level2RouteArray, route => {
-					return route.identifier;
-				});
+				let deduplicateObj = {};
+				for (let i=0; i < level2RouteArray.length; i++)
+					deduplicateObj[level2RouteArray[i].identifier] = level2RouteArray[i];
+				level2RouteArray = [];
+				for (let i in deduplicateObj)
+					level2RouteArray.push(deduplicateObj[i]);				
 
 				if(level2DiscardedRouteArray.length == 0){
 					lWinston.log(`There are no more routes to assess. Stopping here.`);
 					break;
 				}
 				if(level2RouteArray.length == HeapSizeLevel2){
-					lWinston.log(`We found enough valid routes. Stopping here.`);
-					break;
+					let allPerfectRoutes = [];
+					for(let i in level2RouteArray)
+						if(level2RouteArray[i].perfect)
+							allPerfectRoutes.push(level2RouteArray[i]);				
+					if(allPerfectRoutes.length == 0){
+						lWinston.log(`We found enough ${HeapSizeLevel2} routes. But none are 100%. Removing forcibly 1/3 of them and continuing.`);
+						level2RouteArray = level2RouteArray.slice(0, Math.round((level2RouteArray.length/3)*2));
+						continue;
+					}else{
+						lWinston.log(`We found enough valid and perfect routes. Stopping here.`);
+						break;
+					}
 				}
 				if(level2RouteArray.length < HeapSizeLevel2){
 					lWinston.log(`There are more routes to assess, and we still have rounds to consume. Continuing.`);

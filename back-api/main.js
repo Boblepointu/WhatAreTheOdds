@@ -187,7 +187,7 @@ if(Cluster.isMaster){
 					child.send(input);
 				}else{
 					winston.log(`Got a computation result ! Found ${data.length} routes to make it safely !`);
-					winston.log(`Sending the ten best routes.`);
+					winston.log(`Sending the ${MaxSentRouteToClient} best routes.`);
 					if(!responseSent)
 						res.send(JSON.stringify(data.slice(0, MaxSentRouteToClient)));
 					responseSent = true;

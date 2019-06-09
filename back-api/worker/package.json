@@ -13,6 +13,7 @@
     "microjob": "^0.5.2",
     "ngraph.graph": "^0.0.18",
     "ngraph.path": "^1.1.0",
+    "object-sizeof": "^1.4.0",
     "sqlite3": "^4.0.8",
     "underscore": "^1.9.1",
     "winston": "^3.2.1"
