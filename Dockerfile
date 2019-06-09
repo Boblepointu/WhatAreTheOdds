@@ -40,5 +40,4 @@ WORKDIR /app/back-api/worker
 RUN yarn install
 
 WORKDIR /app/back-api/
-#CMD ["node", "main.js"]
-CMD ["bash"]
+CMD ["node", "main.js"]
