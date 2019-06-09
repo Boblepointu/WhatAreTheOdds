@@ -100,6 +100,10 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 
 				improvedRoutes.push(newRoute);
 			}
+			/*var waitMapCount = 0;
+			for(var i in improvedRoutes[0].waitMap)
+				waitMapCount += improvedRoutes[0].waitMap[i];
+			console.log("waitMapCount ", waitMapCount);*/
 			return improvedRoutes;
 		}catch(err){ throw err; }
 	}	
@@ -260,10 +264,12 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 				for (let i in deduplicateObj)
 					cleanedRoutesArray.push(deduplicateObj[i]);
 
-				lWinston.log(`Sorting the resulting route array odds to make it then by route length.`);
+				lWinston.log(`Sorting the resulting route array odds to make it then by route length then by number of steps.`);
 				let cmp = (a, b) => (a < b) - (a > b);
 				cleanedRoutesArray.sort((a, b) => {
-					return cmp(a.score.chanceToMakeIt, b.score.chanceToMakeIt) || cmp(a.score.distanceScore, b.score.distanceScore);
+						return cmp(a.score.chanceToMakeIt, b.score.chanceToMakeIt) 
+							|| cmp(a.score.distanceScore, b.score.distanceScore) 
+							|| cmp(-a.waitMap.length, -b.waitMap.length);
 				});
 
 				lWinston.log(`Discarding routes with the lowest score to fit in the maximum search stack size (${HeapSizeLevel2}).`);
@@ -272,7 +278,9 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 					let toDiscardArray = cleanedRoutesArray.slice(HeapSizeLevel2, cleanedRoutesArray.length-1);
 					level2DiscardedRouteArray = level2DiscardedRouteArray.concat(toDiscardArray);
 					level2DiscardedRouteArray.sort((a, b) => {
-						return cmp(a.score.chanceToMakeIt, b.score.chanceToMakeIt) || cmp(a.score.distanceScore, b.score.distanceScore);
+						return cmp(a.score.chanceToMakeIt, b.score.chanceToMakeIt) 
+							|| cmp(a.score.distanceScore, b.score.distanceScore) 
+							|| cmp(-a.waitMap.length, -b.waitMap.length);
 					});
 					if(level2DiscardedRouteArray.length > HeapSizeLevel2)
 						level2DiscardedRouteArray = level2DiscardedRouteArray.slice(0, HeapSizeLevel2);
@@ -392,10 +400,13 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 
 			lWinston.log(`Starting the search loop.`);
 			level2RoundCount = 0;
-			while(true){				
+			while(true){
+				var level2RouteLength = level2RouteArray.length;
 				var cmp = (a, b) => (a < b) - (a > b);
 				level2DiscardedRouteArray.sort((a, b) => {
-					return cmp(a.score.chanceToMakeIt, b.score.chanceToMakeIt) || cmp(a.score.distanceScore, b.score.distanceScore);
+					return cmp(a.score.chanceToMakeIt, b.score.chanceToMakeIt) 
+							|| cmp(a.score.distanceScore, b.score.distanceScore) 
+							|| cmp(a.waitMap.length, b.waitMap.length);
 				});	
 				var routesToAdd = level2DiscardedRouteArray.slice(0, HeapSizeLevel2 - level2RouteArray.length);
 				level2DiscardedRouteArray = level2DiscardedRouteArray.slice(HeapSizeLevel2 - level2RouteArray.length, level2DiscardedRouteArray.length - 1);
@@ -429,8 +440,13 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 						break;
 					}
 				}
+
+				if(level2RouteLength == level2RouteArray.length){
+					lWinston.log(`No improvement on last loop. Breaking here.`);
+					break;
+				}
 				if(level2RouteArray.length < HeapSizeLevel2){
-					lWinston.log(`There are more routes to assess, and we still have rounds to consume. Continuing.`);
+					lWinston.log(`There are more routes (${level2RouteArray.length}) to assess, and we still have rounds to consume. Continuing.`);
 					continue;
 				}
 			}
@@ -457,9 +473,11 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 			}
 
 			lWinston.log(`Found ${level2RouteArray.length} routes that could make it.`);
-			var cmp = (a, b) => (a > b) - (a < b);
+			var cmp = (a, b) => (a < b) - (a > b);
 			level2RouteArray.sort((a, b) => {
-				return cmp(b.score.chanceToMakeIt, a.score.chanceToMakeIt);
+				return cmp(a.score.chanceToMakeIt, b.score.chanceToMakeIt) 
+					|| cmp(a.score.distanceScore, b.score.distanceScore) 
+					|| cmp(-a.waitMap.length, -b.waitMap.length);
 			});
 
 			return level2RouteArray;

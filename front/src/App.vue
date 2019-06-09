@@ -19,7 +19,7 @@
 		<div id="empireData" class="container alert alert-info" v-if="!isLoading">
 			<div class="row">
 				<div id="empireDataTitleHolder" class="col-md-6 offset-md-3 col-sm-6 offset-sm-3 col-8 offset-2">
-					<h1>Empire intel</h1>
+					<h1>Empire intel :</h1>
 				</div>
 			</div>
 			<div class="row">
@@ -146,9 +146,11 @@
 					this.resultsFetched = true;
 				}catch(err){ 
 					if(err.message){
+						this.resultsFetched = false;
 						this.globalAlertMessage = `The central computer seems offline. (${err.message})`;
 					}
 					if(err.response){
+						this.resultsFetched = false;
 						this.globalAlertMessage = `The central computer won't accept our data ! (${err.response.data})`;
 					}
 				}

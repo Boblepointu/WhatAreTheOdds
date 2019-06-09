@@ -162,13 +162,9 @@ if(Cluster.isMaster){
 			winston.log(`Spawning worker thread into (${cwd})`);
 			var child = spawn('node', ['main.js', 'CALLFROMAPI'], { cwd: cwd, stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ] });
 
-			var spawnLog = function(data){
-				var stringed = data.toString();
-				if(stringed.length > 0)	console.log(stringed);
-			}
-			
-			child.stdout.on('data', spawnLog);
-			child.stderr.on('data', spawnLog);
+			winston.log(`Binding event listeners to worker process.`);
+			child.stdout.on('data', function(data){ console.log(data.toString()); });
+			child.stderr.on('data', function(data){ console.log(data.toString()); });
 			child.on('close', code => { 
 				winston.log(`Child process exited. Freeing slot !`); 
 				process.send('newDeath');

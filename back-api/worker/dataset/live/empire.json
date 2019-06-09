@@ -1,18 +1,8 @@
 {
-  "countdown": 1500,
+  "countdown": 10, 
   "bounty_hunters": [
-    {  "planet": "P1", "day": 2 },
-    {  "planet": "P1", "day": 1 },
-    {  "planet": "P2", "day": 8 },
-    {  "planet": "P4", "day": 12 },
-    {  "planet": "P4", "day": 21 },
-    {  "planet": "P1", "day": 15 }, 
-    {  "planet": "P1", "day": 17 },
-    {  "planet": "P3", "day": 18 },
-    {  "planet": "Endor", "day": 5 },
-    {  "planet": "Endor", "day": 6 },
-    {  "planet": "Endor", "day": 7 },
-    {  "planet": "Endor", "day": 8 },
-    {  "planet": "P1", "day": 23 }
+    { "planet": "Hoth", "day": 6 },
+    { "planet": "Hoth", "day": 7 },
+    { "planet": "Hoth", "day": 8 }
   ]
 }
