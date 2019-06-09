@@ -3,5 +3,5 @@
 	, "HeapSizeLevel2": 150
 	, "DataSet": "live"
 	, "HardTimeoutSec": 1000
-	, "LogLevel": 4
+	, "LogLevel": 2
 }

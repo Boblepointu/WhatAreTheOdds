@@ -158,6 +158,7 @@ if(Cluster.isMaster){
 			winston.log(`Given input parameters are valids.`);
 
 			var cwd = `${__dirname}/worker/`;
+			var responseSent = false;
 			winston.log(`Spawning worker thread into (${cwd})`);
 			var child = spawn('node', ['main.js', 'CALLFROMAPI'], { cwd: cwd, stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ] });
 
@@ -171,6 +172,13 @@ if(Cluster.isMaster){
 			child.on('close', code => { 
 				winston.log(`Child process exited. Freeing slot !`); 
 				process.send('newDeath');
+				if(!responseSent){
+					winston.error(`Child process died before sending a response to our client. Something is wrong. Closing http request.`);
+					res.status(500);
+					res.end('Worker process died unexpectedly. Contact admins and say them the HeapSize is too high !');
+					responseSent = true;					
+				}
+
 			});
 			child.on('message', function(data){
 				var stringed = data.toString();
@@ -180,11 +188,14 @@ if(Cluster.isMaster){
 				}else{
 					winston.log(`Got a computation result ! Found ${data.length} routes to make it safely !`);
 					winston.log(`Sending the ten best routes.`);
-					res.send(JSON.stringify(data.slice(0, MaxSentRouteToClient)));
+					if(!responseSent)
+						res.send(JSON.stringify(data.slice(0, MaxSentRouteToClient)));
+					responseSent = true;
 					child.kill();
 				}
 			});
 		}catch(err){
+			winston.log(err);
 			res.status(500);
 			res.end('Unexpected server error.');
 		}

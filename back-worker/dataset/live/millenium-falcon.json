@@ -1,5 +1,5 @@
 {
-  "autonomy": 6,
+  "autonomy": 210,
   "departure": "Tatooine",
   "arrival": "Endor",
   "routes_db": "universe-test0002.db"
