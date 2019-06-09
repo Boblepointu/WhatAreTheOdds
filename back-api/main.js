@@ -118,7 +118,7 @@ if(Cluster.isMaster){
 		for(var i in req.body.data.bounty_hunters)
 			toReturn.bounty_hunters.push({
 				planet: req.body.data.bounty_hunters[i].planet
-				, day: req.body.data.bounty_hunters.day
+				, day: req.body.data.bounty_hunters[i].day
 			});
 
 		return toReturn;

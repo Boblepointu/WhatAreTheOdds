@@ -1,7 +1,7 @@
 {
-	"HeapSizeLevel1": 100
-	, "HeapSizeLevel2": 100
-	, "DepthLevel2": 100
+	"HeapSizeLevel1": 1000
+	, "HeapSizeLevel2": 1000
+	, "DepthLevel2": 1000
 	, "DataSet": "live"
 	, "HardTimeoutSec": 1000
 }

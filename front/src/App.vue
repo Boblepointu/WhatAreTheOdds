@@ -69,7 +69,10 @@
 		<div id="globalAlertMessage" class="container alert alert-danger" v-if="globalAlertMessage">
 			<img class="iconAlert" src="./assets/iconAlert.svg"> {{ globalAlertMessage }}		
 		</div>
-
+		<div id="percentageBlock" class="container alert alert-secondary" v-if="resultsFetched">
+			<h1 v-if="results.length == 0">The Millenium Falcon can't make it ! - <b>0%</b></h1>
+			<h1 v-if="results.length > 0">The Millenium Falcon can make it ! - <b>{{results[0].score.chanceToMakeIt}}%</b></h1>
+		</div>
 		<div id="resultsBlock" class="container alert alert-success" v-if="results.length > 0">
 			<h1 id="resultsBlockTitle">Selected routes :</h1>
 			<div class="row" v-for="(route, key, index) in results">
@@ -137,6 +140,7 @@
 					var res = await axios.post(forced+'/compute', { data: this.empireDataJson });
 					this.results = res.data;
 					if(this.results.length == 0) this.globalAlertMessage = `The computer couldn't find any route to make it in time !`
+					this.resultsFetched = true;
 				}catch(err){ 
 					if(err.message){
 						this.globalAlertMessage = `The central computer seems offline. (${err.message})`;

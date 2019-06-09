@@ -34,10 +34,13 @@ module.exports = function(routeRows, bhArray){
 
 			for(var i in routeRows){
 				var currRoute = routeRows[i];
-				if(!graph.planets[currRoute.origin]) 
+				if(!graph.planets[currRoute.origin])
 					graph.planets[currRoute.origin] = { links: [], bh: _.filter(bhArray, entry => { return entry.planet == currRoute.origin; }) };
 				if(!graph.planets[currRoute.destination]) 
 					graph.planets[currRoute.destination] = { links: [], bh: _.filter(bhArray, entry => { return entry.planet == currRoute.destination; }) };
+
+				console.log(currRoute.origin.bh)
+				console.log(currRoute.destination.bh)
 
 				if(!_.find(graph.planets[currRoute.origin].links, entry => { return entry.planet == currRoute.destination && entry.travelTime == currRoute.travel_time; }))
 					graph.planets[currRoute.origin].links.push({ planet: currRoute.destination, travelTime: currRoute.travel_time });

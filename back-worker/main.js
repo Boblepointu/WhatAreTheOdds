@@ -36,9 +36,8 @@ const main = async function(){
 	var Empire = DataSet.Empire;
 	var Universe = DataSet.Universe;
 
-	var graph = await BuildGraph(Universe, Empire.bounty_hunters);
-
 	if(!process.argv[0]){
+		var graph = await BuildGraph(Universe, Empire.bounty_hunters);
 		winston.log(`We were inited from the command line.`);
 		var pathFinder = new PathFinder(MFalcon, Empire, graph, HeapSizeLevel1, HeapSizeLevel2, DepthLevel2);
 		var resultArray = pathFinder.computePath();
@@ -66,6 +65,7 @@ const main = async function(){
 		clearTimeout(timeoutHandle);
 		winston.log(`Got empire data ! Ready to ruuuuumble !`);
 
+		var graph = await BuildGraph(Universe, Empire.bounty_hunters);
 		var pathFinder = new PathFinder(MFalcon, Empire, graph, HeapSizeLevel1, HeapSizeLevel2, DepthLevel2);
 		var resultArray = pathFinder.computePath();
 
