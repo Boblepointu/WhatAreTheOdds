@@ -8,7 +8,6 @@ const Config = require('./config.json');
 
 const HeapSizeLevel1 = process.env.HEAP_SIZE_LEVEL_1 || Config.HeapSizeLevel1 || 10;
 const HeapSizeLevel2 = process.env.HEAP_SIZE_LEVEL_2 || Config.HeapSizeLevel2 || 10;
-const DepthLevel2 = process.env.DEPTH_LEVEL_2 || Config.DepthLevel2 || 1000;
 const DataSetName = process.env.DATASET || Config.DataSet || 'live';
 const HardTimeoutSec = process.env.HARD_TIMEOUT_SEC || Config.HardTimeoutSec || 60;
 
@@ -39,7 +38,7 @@ const main = async function(){
 	if(!process.argv[0]){
 		var graph = await BuildGraph(Universe, Empire.bounty_hunters);
 		winston.log(`We were inited from the command line.`);
-		var pathFinder = new PathFinder(MFalcon, Empire, graph, HeapSizeLevel1, HeapSizeLevel2, DepthLevel2);
+		var pathFinder = new PathFinder(MFalcon, Empire, graph, HeapSizeLevel1, HeapSizeLevel2);
 		var resultArray = pathFinder.computePath();
 		//console.log(resultArray);
 	}else{
@@ -66,7 +65,7 @@ const main = async function(){
 		winston.log(`Got empire data ! Ready to ruuuuumble !`);
 
 		var graph = await BuildGraph(Universe, Empire.bounty_hunters);
-		var pathFinder = new PathFinder(MFalcon, Empire, graph, HeapSizeLevel1, HeapSizeLevel2, DepthLevel2);
+		var pathFinder = new PathFinder(MFalcon, Empire, graph, HeapSizeLevel1, HeapSizeLevel2);
 		var resultArray = pathFinder.computePath();
 
 		winston.log(`Sending results to api process.`);

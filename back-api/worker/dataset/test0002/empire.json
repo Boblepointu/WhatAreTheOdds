@@ -2,10 +2,6 @@
   "countdown": 15,
   "bounty_hunters": [
     {
-      "planet": "P1",
-      "day": 1
-    },
-    {
       "planet": "P0",
       "day": 2
     },

@@ -69,10 +69,12 @@
 		<div id="globalAlertMessage" class="container alert alert-danger" v-if="globalAlertMessage">
 			<img class="iconAlert" src="./assets/iconAlert.svg"> {{ globalAlertMessage }}		
 		</div>
-		<div id="percentageBlock" class="container alert alert-secondary" v-if="resultsFetched">
+
+		<div id="percentageBlock" class="container alert alert-secondary" v-if="resultsFetched && !isLoading">
 			<h1 v-if="results.length == 0">The Millenium Falcon can't make it ! - <b>0%</b></h1>
 			<h1 v-if="results.length > 0">The Millenium Falcon can make it ! - <b>{{results[0].score.chanceToMakeIt}}%</b></h1>
 		</div>
+
 		<div id="resultsBlock" class="container alert alert-success" v-if="results.length > 0">
 			<h1 id="resultsBlockTitle">Selected routes :</h1>
 			<div class="row" v-for="(route, key, index) in results">
@@ -81,6 +83,7 @@
 					<h6><b>Odds to make it safe :</b> {{route.score.chanceToMakeIt}}%</h6>
 					<h6><b>Time to travel :</b> {{route.travelTime}} days</h6>
 					<h6><b>Route identifier :</b> {{ route.identifier }}</h6>
+					<h6><b>WaitMap :</b> {{ route.waitMap }}</h6>
 				</div>
 			</div>
 		</div>
@@ -139,7 +142,6 @@
 					var forced = "http://127.0.0.1:3000"
 					var res = await axios.post(forced+'/compute', { data: this.empireDataJson });
 					this.results = res.data;
-					if(this.results.length == 0) this.globalAlertMessage = `The computer couldn't find any route to make it in time !`
 					this.resultsFetched = true;
 				}catch(err){ 
 					if(err.message){
@@ -229,6 +231,7 @@
 			text-align: center;
 			margin: 1em 0;
 		}
+	#percentageBlock{ text-align: center; }
 	#computeBlock{}
 		#computeButton{
 			text-align: center;

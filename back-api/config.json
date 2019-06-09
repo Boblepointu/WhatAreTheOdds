@@ -2,5 +2,5 @@
 	"MaxSimultaneousComputation": 10
 	, "Port": 3000
 	, "AllowAllAccessControlOrigins": true
-	, "MaxSentRouteToClient": 10
+	, "MaxSentRouteToClient": 10000
 }

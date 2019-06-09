@@ -1,6 +1,6 @@
 "use strict";
 
-module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2, DepthLevel2){
+module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2){
 	const _ = require('underscore');
 	const Logger = require('./Logger.js');
 	const PathFinderToolBox = require('./PathFinderToolBox.js');
@@ -22,7 +22,6 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 			var distanceScore = pathFinderToolBox.computeDistanceScore(timeToPosition);
 			var aggregatedScore = chanceToMakeIt + distanceScore;
 
-
 			for(var day in timeToPosition);
 			route.travelTime = parseInt(day);
 			route.score = { aggregatedScore: aggregatedScore, distanceScore: distanceScore, chanceToMakeIt: chanceToMakeIt };
@@ -37,7 +36,7 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 	}
 
 	var extendRoute = function(route){
-		var lWinston = {log: function(){}, warn: function(){}};//Logger(`PathFinder-computeLevel1-computeRouteArray-extendRoute`);
+		var lWinston = Logger(`PathFinder-computeLevel1-computeRouteArray-extendRoute`, 4);
 		try{
 			var extendedRoutes = [];
 			
@@ -80,7 +79,7 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 	}
 
 	var improveRoute = function(route){
-		var lWinston = {log: function(){}, warn: function(){}};//Logger(`PathFinder-computeLevel2-FindBestPathes-improveRoute`);
+		var lWinston = Logger(`PathFinder-computeLevel2-FindBestPathes-improveRoute`, 4);
 		try{
 			var improvedRoutes = [];
 
@@ -89,7 +88,6 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 					path: route.path.slice(0)
 					, linkNumberMap: route.linkNumberMap.slice(0)
 					, waitMap: route.waitMap.slice(0)
-					, timeToPosition: Object.assign({}, route.timeToPosition)
 					, score: { aggregatedScore: route.score.aggregatedScore
 							, distanceScore: route.score.distanceScore
 							, chanceToMakeIt: route.score.chanceToMakeIt }
@@ -99,24 +97,19 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 					, perfect: route.perfect
 					, identifier: route.identifier
 					, liteIdentifier: route.liteIdentifier };
-				newRoute.waitMap[i]++;// = newRoute.waitMap[i]+1;
+				newRoute.waitMap[i] = newRoute.waitMap[i]+1;
+				newRoute.timeToPosition = pathFinderToolBox.computeTimeToPosition(newRoute);
 				
 				updateRoute(newRoute);
 
-				var newRouteDepth = 0;
-				for(var j = 0; j < newRoute.waitMap.length; j++)
-					newRouteDepth += parseInt(newRoute.waitMap[j]);
-
-				if(newRouteDepth < DepthLevel2)
-					improvedRoutes.push(newRoute);
+				improvedRoutes.push(newRoute);
 			}
-
 			return improvedRoutes;
 		}catch(err){ throw err; }
 	}	
 
 	var findValidPathes = function(){
-		var lWinston = Logger(`PathFinder-computeLevel1-findValidPathes`);
+		var lWinston = Logger(`PathFinder-computeLevel1-findValidPathes`, 3);
 		try{
 			while(_.filter(level1RouteArray, route => { return route.complete; }).length != level1RouteArray.length){
 				level1RoundCount++;
@@ -173,10 +166,11 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 					return route.identifier;
 				});
 
-				lWinston.log(`Sorting the resulting route array by route length and odds to make it (aggregatedScore).`);
+				lWinston.log(`Sorting the resulting route array odds to make it then by route length.`);
+				var cmp = (a, b) => (a < b) - (a > b);
 				cleanedRoutesArray.sort((a, b) => {
-					return b.score.aggregatedScore - a.score.aggregatedScore;
-				});						
+					return cmp(a.score.chanceToMakeIt, b.score.chanceToMakeIt) || cmp(a.score.distanceScore, b.score.distanceScore);
+				});					
 
 				lWinston.log(`Discarding routes with the lowest score to fit in the maximum search stack size (${HeapSizeLevel1}).`);
 				if(cleanedRoutesArray.length > HeapSizeLevel1){
@@ -194,8 +188,10 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 	}
 
 	var findBestPathes = function(){
-		var lWinston = Logger(`PathFinder-computeLevel2-findBestPathes`);
+		var lWinston = Logger(`PathFinder-computeLevel2-findBestPathes`, 3);
 		try{
+			var lastRoundIdentifierSum = '';
+			var countSimilar = 0;
 			do{
 				level2RoundCount++;
 				lWinston.log(``);
@@ -225,9 +221,9 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 				lWinston.log(`There are ${routesToImproveArray.length} routes to improve.`)			
 
 				lWinston.log(`Defining which routes are perfect.`);
-				for(var i in level2RouteArray)
-					if(level2RouteArray[i].perfect)
-						cleanedRoutesArray.push(level2RouteArray[i]);
+				for(var i in level2RouteArray){
+					cleanedRoutesArray.push(level2RouteArray[i]);
+				}
 				lWinston.log(`There are ${cleanedRoutesArray.length} perfect routes.`);
 
 				lWinston.log(`Improving available routes.`);
@@ -248,12 +244,13 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 
 				lWinston.log(`Removing duplicated routes.`);
 				cleanedRoutesArray = _.uniq(cleanedRoutesArray, route => {
-					return route.identifier;
+					return route.identifier+route.waitMap.toString();
 				});
 
-				lWinston.log(`Sorting the resulting route array by route length and odds to make it (aggregatedScore).`);
+				lWinston.log(`Sorting the resulting route array odds to make it then by route length.`);
+				var cmp = (a, b) => (a < b) - (a > b);
 				cleanedRoutesArray.sort((a, b) => {
-					return b.score.aggregatedScore - a.score.aggregatedScore;
+					return cmp(a.score.chanceToMakeIt, b.score.chanceToMakeIt) || cmp(a.score.distanceScore, b.score.distanceScore);
 				});
 
 				lWinston.log(`Discarding routes with the lowest score to fit in the maximum search stack size (${HeapSizeLevel2}).`);
@@ -266,13 +263,27 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 
 				lWinston.log(`There is ${cleanedRoutesArray.length} routes available in the stack.`);
 
-				level2RouteArray = cleanedRoutesArray;
-			}while(_.filter(level2RouteArray, route => { return route.perfect; }).length != level2RouteArray.length);
+				if(cleanedRoutesArray.length > 0)
+					level2RouteArray = cleanedRoutesArray;
+
+				var newRoundIdentifierSum = "";
+				for(var i in level2RouteArray)
+					newRoundIdentifierSum += level2RouteArray[i].identifier;
+
+				if(lastRoundIdentifierSum == newRoundIdentifierSum) countSimilar++;
+				if(countSimilar > 2) break;
+
+				if(_.filter(level2RouteArray, route => { return route.perfect; }).length == level2RouteArray.length)
+					break;
+
+				lastRoundIdentifierSum = newRoundIdentifierSum;
+				
+			}while(true);
 		}catch(err){ throw err; }
 	}
 
 	var computeLevel1 = function(){
-		var lWinston = Logger(`PathFinder-computeLevel1`);
+		var lWinston = Logger(`PathFinder-computeLevel1`, 2);
 		try{
 			lWinston.log(``);
 			lWinston.log(`///////////////////////////////////////////////////////`);
@@ -333,7 +344,7 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 	}
 
 	var computeLevel2 = function(){
-		var lWinston = Logger(`PathFinder-computeLevel2`);
+		var lWinston = Logger(`PathFinder-computeLevel2`, 2);
 		try{
 			lWinston.log(``);
 			lWinston.log(`///////////////////////////////////////////////////////`);
@@ -350,32 +361,19 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 
 			lWinston.log(`Starting the search loop.`);
 			level2RoundCount = 0;
-			while(true){
-				level2DiscardedRouteArray.sort((a, b) => { return b.score.aggregatedScore - a.score.aggregatedScore; });
-				var routesToAdd = level2DiscardedRouteArray.slice(0, HeapSizeLevel2 - level2RouteArray.length);
-				level2DiscardedRouteArray = level2DiscardedRouteArray.slice(HeapSizeLevel2 - level2RouteArray.length, level2DiscardedRouteArray.length - 1);
-				for(var i in routesToAdd) level2RouteArray.push(routesToAdd[i]);
 
-				findBestPathes();
-				
-				if(level2DiscardedRouteArray.length == 0){
-					lWinston.log(`There are no more routes to assess. Stopping here.`);
-					break;
-				}
-				if(level2RouteArray.length == HeapSizeLevel2){
-					lWinston.log(`We found enough valid routes. Stopping here.`);
-					break;
-				}
-				if(level2RouteArray.length < HeapSizeLevel2){
-					lWinston.log(`There are more routes to assess, and we still have rounds to consume. Continuing.`);
-					continue;
-				}			
-			}
+
+			findBestPathes();
+			
+			lWinston.log(`Removing duplicated routes (waitMap && refuelMap might have crossed).`);
+			level2RouteArray = _.uniq(level2RouteArray, route => {
+				return route.identifier;
+			});
 		}catch(err){ throw err; }
 	}
 
 	this.computePath = function(){
-		var lWinston = Logger(`PathFinder-computePath`);
+		var lWinston = Logger(`PathFinder-computePath`, 1);
 		try{
 			lWinston.log(`Computing level 1, finding out completes routes`);
 			computeLevel1();
@@ -391,8 +389,9 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 			}
 
 			lWinston.log(`Found a few routes that could make it.`);
+			var cmp = (a, b) => (a > b) - (a < b);
 			level2RouteArray.sort((a, b) => {
-				return b.score.aggregatedScore - a.score.aggregatedScore;
+				return cmp(b.score.chanceToMakeIt, a.score.chanceToMakeIt);
 			});
 
 			return level2RouteArray;

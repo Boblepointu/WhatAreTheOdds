@@ -82,7 +82,7 @@ if(Cluster.isMaster){
 					res.end('Every bounty hunters intel need a planet.');
 					return false;
 				}
-				if(!req.body.data.bounty_hunters[i].day){
+				if(!req.body.data.bounty_hunters[i].day && req.body.data.bounty_hunters[i].day != 0){
 					res.status(400);
 					res.end('Every bounty hunters intel need a day.');
 					return false;

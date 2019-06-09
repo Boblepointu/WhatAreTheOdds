@@ -5,7 +5,7 @@ module.exports = function(Graph, MFalcon, Empire){
 	const Logger = require('./Logger.js');
 
 	this.computeTimeToPosition = function(route){
-		var lWinston = {log: function(){}, warn: function(){}};//Logger(`PathFinderToolBox-computeTimeToPosition`);
+		var lWinston = Logger(`PathFinderToolBox-computeTimeToPosition`, 5);
 		try{
 			var travelTime = 0;
 			var travelTimeSinceLastRefuel = 0;
@@ -54,7 +54,7 @@ module.exports = function(Graph, MFalcon, Empire){
 	}
 
 	this.computeChanceToMakeIt = function(Graph, timeToPosition){
-		var lWinston = {log: function(){}, warn: function(){}};//Logger(`PathFinderToolBox-computeChanceToMakeIt`);
+		var lWinston = Logger(`PathFinderToolBox-computeChanceToMakeIt`, 5);
 		try{
 			var oddsMFalconWillMakeIt = 100;
 			var chanceToBeCaptured = 0;
@@ -84,7 +84,7 @@ module.exports = function(Graph, MFalcon, Empire){
 	}
 
 	this.computeDistanceScore = function(timeToPosition){
-		var lWinston = {log: function(){}, warn: function(){}};//Logger(`PathFinderToolBox-computeDistanceScore`);
+		var lWinston = Logger(`PathFinderToolBox-computeDistanceScore`, 5);
 		try{
 			var lastTimedPosition = 0;
 			for(lastTimedPosition in timeToPosition);
@@ -93,7 +93,7 @@ module.exports = function(Graph, MFalcon, Empire){
 	}
 
 	this.isRouteTravelable = function(route){
-		var lWinston = {log: function(){}, warn: function(){}};//Logger(`PathFinderToolBox-isRouteTravelable`);
+		var lWinston = Logger(`PathFinderToolBox-isRouteTravelable`, 5);
 		try{
 			lWinston.log(`Finding out if route ${route.identifier} is travelable, with a Millenium Falcon autonomy of ${MFalcon.autonomy} and an Empire countdown of ${Empire.countdown}.`);
 

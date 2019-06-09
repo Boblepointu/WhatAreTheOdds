@@ -39,9 +39,6 @@ module.exports = function(routeRows, bhArray){
 				if(!graph.planets[currRoute.destination]) 
 					graph.planets[currRoute.destination] = { links: [], bh: _.filter(bhArray, entry => { return entry.planet == currRoute.destination; }) };
 
-				console.log(currRoute.origin.bh)
-				console.log(currRoute.destination.bh)
-
 				if(!_.find(graph.planets[currRoute.origin].links, entry => { return entry.planet == currRoute.destination && entry.travelTime == currRoute.travel_time; }))
 					graph.planets[currRoute.origin].links.push({ planet: currRoute.destination, travelTime: currRoute.travel_time });
 				else
