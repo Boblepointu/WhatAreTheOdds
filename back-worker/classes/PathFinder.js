@@ -1,6 +1,6 @@
 "use strict";
 
-module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2, DepthLevel2, Timeout){
+module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2, Depth, Timeout){
 	const Logger = require('./Logger.js');
 	const PathFinderToolBox = require('./PathFinderToolBox.js');
 	const pathFinderToolBox = new PathFinderToolBox(Graph, MFalcon, Empire);
@@ -82,15 +82,17 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 						updateRoute(newRoute);
 						if(newRoute.score.riskScore > route.score.riskScore && newRoute.travelable)
 							improvedRoutes.push(newRoute);
-					}
-
-					let newRoute = pathFinderToolBox.cloneRoute(route);
-					newRoute.waitMap[i] += 1;
-					updateRoute(newRoute);
-					if(newRoute.score.riskScore > route.score.riskScore && newRoute.travelable)
-						improvedRoutes.push(newRoute);					
+					}				
 				}
+				
+				let newRoute = pathFinderToolBox.cloneRoute(route);
+				newRoute.waitMap[i] += 1;
+				updateRoute(newRoute);
+
+				if(newRoute.score.riskScore > route.score.riskScore -25 && newRoute.travelable)
+					improvedRoutes.push(newRoute);				
 			}
+
 			return improvedRoutes;
 		}catch(err){ throw err; }
 	}	
@@ -100,6 +102,9 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 		try{
 			var discardedRouteArray = [];
 			var roundCount = 0;
+
+			var nbRoundSinceImproved = 0;
+			var lastCompleteCount = 0;
 
 			while(true){
 				roundCount++;
@@ -146,6 +151,11 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 				for(let i in routeArray)
 					if(routeArray[i].complete) completeCount++;
 
+				if(lastCompleteCount < completeCount){
+					lastCompleteCount = completeCount;
+					nbRoundSinceImproved = 0;
+				}else nbRoundSinceImproved++;
+
 				lWinston.log(`There is ${routeArray.length} routes available in the stack.`);
 				lWinston.log(`There is ${completeCount} completed routes in the stack.`);
 
@@ -153,7 +163,8 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 					lWinston.log(`Soft timeout (${Timeout} seconds) broken on level 1. You won't have improved results !`);
 					break;
 				}
-				if(completeCount != routeArray.length) continue;
+
+				if(completeCount != routeArray.length && nbRoundSinceImproved < Depth) continue;
 				else break;
 			}
 
@@ -200,8 +211,9 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 					else selectedRoutesArray.push(currRoute);
 				}
 
+
 				lWinston.log(`Removing duplicated routes.`);
-				selectedRoutesArray = pathFinderToolBox.dedupRoutes(selectedRoutesArray, "hard");
+				selectedRoutesArray = pathFinderToolBox.dedupRoutes(selectedRoutesArray);
 
 				lWinston.log(`Sorting the resulting route array odds to make it then by route length.`);
 				pathFinderToolBox.sortRoutes(selectedRoutesArray, "risk");
@@ -211,7 +223,7 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 					bestScore = selectedRoutesArray[0].score.riskScore;
 					nbRoundSinceBestScoreTopped = 0;
 				}else{
-					lWinston.log(`Best risk score ${bestScore} unegaled ! ${DepthLevel2 - nbRoundSinceBestScoreTopped} round to go.`);
+					lWinston.log(`Best risk score ${bestScore} unegaled ! ${Depth - nbRoundSinceBestScoreTopped} round to go.`);
 					nbRoundSinceBestScoreTopped++;
 				}
 				
@@ -230,16 +242,16 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 
 				var perfectIsFound = false;
 				for(let i in routeArray)
-					if(routeArray[i].perfect) 
+					if(routeArray[i].perfect)
 						perfectIsFound = true;
 
 				if(((new Date()).getTime()/1000) - timeStarted > Timeout){
 					lWinston.log(`Soft timeout (${Timeout} seconds) broken on level 2. Returning whatever we got !`);
 					break;
 				}
-				if(perfectIsFound) break;
+				
 				if(routeArray.length == 0 && discardedRouteArray.length == 0) break;
-				if(nbRoundSinceBestScoreTopped > DepthLevel2) break;
+				if(nbRoundSinceBestScoreTopped > Depth) break;
 			}
 
 			routeArray = routeArray.concat(discardedRouteArray);
