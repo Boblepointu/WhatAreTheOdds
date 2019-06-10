@@ -30,7 +30,7 @@
 						<input type="file" id="file" ref="file" v-on:change="handleFileUpload()"/>
 					</div>
 
-					<textarea id="empireDataTextarea" v-on:keyup="rawEmpireDataChanged" v-model="rawEmpireData">
+					<textarea id="empireDataTextarea" v-on:change="rawEmpireDataChanged" v-model="rawEmpireData">
 					</textarea>
 				</div>
 				<div class="col-md-4 offset-md-2 col-12 col-sm-12">
@@ -38,6 +38,7 @@
 
 					<div v-if="jsonValid">
 						<vue-json-pretty
+							deep="1"
 							id="empireJsonPrettifier"
 							:data=empireDataJson>
 						</vue-json-pretty>	
@@ -212,7 +213,7 @@
 		#empireDataTextarea{
 			width: 100%;
 			min-height: 10em;
-			height: calc(100% - 8em);
+			height: calc(100% - 5.5em);
 			resize: none;
 			padding: 0.5em;
 		}

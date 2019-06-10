@@ -4,6 +4,111 @@ module.exports = function(Graph, MFalcon, Empire){
 	const _ = require('underscore');
 	const Logger = require('./Logger.js');
 
+	this.cloneRoute = function(route){
+		var cloned = this.createRoute(route.path[0]);
+		
+		cloned.path = route.path.slice(0);
+		cloned.linkNumberMap = route.linkNumberMap.slice(0);
+		cloned.waitMap = route.waitMap.slice(0);
+		cloned.riskMap = route.riskMap.slice(0);
+		cloned.score.aggregatedScore = route.score.aggregatedScore;
+		cloned.score.distanceScore = route.score.distanceScore;
+		cloned.score.chanceToMakeIt = route.score.chanceToMakeIt;
+		cloned.score.riskScore = route.score.riskScore;
+		cloned.travelTime = route.travelTime;
+		cloned.complete = route.complete;
+		cloned.travelable = route.travelable;
+		cloned.perfect = route.perfect;
+		cloned.identifier = route.identifier;
+		cloned.liteIdentifier = route.liteIdentifier;
+
+		return cloned;
+	}
+
+	this.createRoute = function(startPlanet){
+		var route = { 
+				path: [startPlanet]
+				, linkNumberMap: [0]
+				, waitMap: [0]
+				, riskMap: [0]
+				, timeToPosition: {}
+				, score: { aggregatedScore: 0
+						, distanceScore: 0
+						, chanceToBeCaptured: 0 }
+				, travelTime: 0
+				, complete: false
+				, travelable: true
+				, perfect: false };
+		return route;
+	}
+
+	this.scalpRoutes = function(scalpFromArray, scalpToArray, heapSize){
+		try{
+			let scalpedArray = scalpFromArray.slice(heapSize);
+			scalpToArray = scalpedArray.concat(scalpToArray);
+			this.sortRoutes(scalpToArray, "chanceThenDistance");
+			scalpToArray = scalpToArray.slice(0, heapSize*10);
+			scalpFromArray = scalpFromArray.slice(0, heapSize);
+
+			return [scalpFromArray, scalpToArray];
+		}catch(err){ throw err; }
+	}
+
+	this.sortRoutes = function(routeArray, type){
+		try{
+			var simpleCompare = (a, b) => (b - a);
+			routeArray.sort((a, b) => {
+				if(!type || type == "aggregatedScore")
+					return simpleCompare(a.score.aggregatedScore, b.score.aggregatedScore);
+				if(type == "chanceThenDistance")
+					return simpleCompare(a.score.chanceToMakeIt, b.score.chanceToMakeIt) 
+							|| simpleCompare(a.score.distanceScore, b.score.distanceScore)
+				if(type == "distance")
+					return simpleCompare(a.score.distanceScore, b.score.distanceScore);
+				if(type == "chanceThenDistanceThenPauses")
+					return simpleCompare(a.score.chanceToMakeIt, b.score.chanceToMakeIt) 
+							|| simpleCompare(a.score.distanceScore, b.score.distanceScore)
+							|| simpleCompare(-a.waitMap.length, -b.waitMap.length);	
+				if(type == "chanceThenRisk")
+					return simpleCompare(a.score.chanceToMakeIt, b.score.chanceToMakeIt) 
+							|| simpleCompare(a.score.riskScore, b.score.riskScore);
+				if(type == "chanceThenPauses")
+					return simpleCompare(a.score.chanceToMakeIt, b.score.chanceToMakeIt) 
+							|| simpleCompare(-a.waitMap.length, -b.waitMap.length);							
+				if(type == "risk")
+					return simpleCompare(a.score.riskScore, b.score.riskScore);
+				if(type == "pauses")
+					return simpleCompare(-a.waitMap.length, -b.waitMap.length);
+				if(type == "riskThenPauses")
+					return simpleCompare(a.score.riskScore, b.score.riskScore)
+							|| simpleCompare(-a.waitMap.length, -b.waitMap.length);
+				if(type == "pausesThenRisk")
+					return simpleCompare(-a.waitMap.length, -b.waitMap.length)
+							|| simpleCompare(a.score.riskScore, b.score.riskScore);
+				if(type == "chanceThenRisk")
+					return simpleCompare(a.score.chanceToMakeIt, b.score.chanceToMakeIt)
+							|| simpleCompare(a.score.riskScore, b.score.riskScore);
+			});
+		}catch(err){ throw err; }
+	}	
+
+	this.dedupRoutes = function(routeArray, type){
+		try{
+			let dedupObj = {};
+			for(let i = 0; i < routeArray.length; i++){
+				if(!type)
+					dedupObj[routeArray[i].identifier] = routeArray[i];
+				else if(type == "hard"){
+					dedupObj[routeArray[i].liteIdentifier] = routeArray[i];
+				}
+			}
+			routeArray = [];
+			for(let i in dedupObj) routeArray.push(dedupObj[i]);
+
+			return routeArray;
+		}catch(err){ throw err; }
+	}
+
 	this.computeTimeToPosition = function(route){
 		var lWinston = Logger(`PathFinderToolBox-computeTimeToPosition`, 5);
 		try{
@@ -50,6 +155,135 @@ module.exports = function(Graph, MFalcon, Empire){
 			}
 
 			return timeToPosition;
+		}catch(err){ throw err; }
+	}
+
+	this.computeRiskScore = function(route){
+		try{
+			var rawScore = 0;
+			for(var i in route.riskMap)
+				rawScore += route.riskMap[i];
+			return -rawScore;
+		}catch(err){ throw err; }
+	}
+
+	this.computeRiskMap = function(route, bhArray, timeToPosition){
+		try{
+			bhArray.sort((a, b) => { return a.day - b.day; });
+
+			var planetToRisk = [];
+			for(var i in bhArray){
+				if(!planetToRisk[bhArray[i].planet] && route.path.indexOf(bhArray[i].planet) != -1) planetToRisk[bhArray[i].planet] = [];
+				if(route.path.indexOf(bhArray[i].planet) == -1) continue;
+
+				if(planetToRisk[bhArray[i].planet].indexOf(bhArray[i].day) != -1) continue;
+				planetToRisk[bhArray[i].planet].push(bhArray[i].day);
+			}
+			//console.log(planetToRisk);
+
+			var riskMap = [];
+			for(var i in timeToPosition){
+				var currDay = parseInt(i);
+				var currPlanet = timeToPosition[i].planet;
+				
+				if(!planetToRisk[currPlanet]){
+					riskMap.push(0);
+					continue;
+				}
+
+				var indexFirstRisk = planetToRisk[currPlanet].indexOf(currDay);
+
+				if(planetToRisk[currPlanet].length == 0 || indexFirstRisk == -1)
+					riskMap.push(0);
+				else{
+					var consecutiveRisk = 1;
+					var lastDayAtRisk = currDay;
+					for(var j = indexFirstRisk+1; j < planetToRisk[currPlanet].length; j++){
+						if(planetToRisk[currPlanet][j] == lastDayAtRisk+1){
+							consecutiveRisk++;
+							lastDayAtRisk = planetToRisk[currPlanet][j];
+						}else break;
+					}
+					riskMap.push(consecutiveRisk);
+				}
+			
+				/*if(planetToRisk[currPlanet].length == 0 || indexFirstRisk == -1)
+					riskMap[riskMap.length-1] += 0;
+				else{
+					var consecutiveRisk = 1;
+					var lastDayAtRisk = currDay+1;
+					for(var j = indexFirstRisk+1; j < planetToRisk[currPlanet].length; j++){
+						if(planetToRisk[currPlanet][j] == lastDayAtRisk+1){
+							consecutiveRisk++;
+							lastDayAtRisk = planetToRisk[currPlanet][j];
+						}else break;
+					}
+					riskMap[riskMap.length-1] += consecutiveRisk;
+				}*/
+
+			}
+
+			return riskMap;
+		}catch(err){ throw err; }
+	}
+
+	this.computeDodgeMap = function(route, bhArray, timeToPosition){
+		try{
+			bhArray.sort((a, b) => { return a.day - b.day; });
+
+			var planetToRisk = [];
+			for(var i in bhArray){
+				if(!planetToRisk[bhArray[i].planet] && route.path.indexOf(bhArray[i].planet) != -1) planetToRisk[bhArray[i].planet] = [];
+				if(route.path.indexOf(bhArray[i].planet) == -1) continue;
+
+				if(planetToRisk[bhArray[i].planet].indexOf(bhArray[i].day) != -1) continue;
+				planetToRisk[bhArray[i].planet].push(bhArray[i].day);
+			}
+
+			console.log(planetToRisk);
+			console.log(timeToPosition);
+			console.log(route.riskMap);
+
+			var dodgeMap = [];
+			for(var i in route.riskMap)
+				dodgeMap.push(0);
+			for(var i in route.riskMap){
+				if(dodgeMap[i-1] === undefined) continue;
+				dodgeMap[i-1] = route.riskMap[i];
+			}
+
+			console.log(dodgeMap);
+			process.exit();
+
+
+
+			for(var i in timeToPosition){
+				var currDay = parseInt(i);
+				var currPlanet = timeToPosition[i].planet;
+				
+				if(!planetToRisk[currPlanet]){
+					riskMap.push(0);
+					continue;
+				}
+
+				var indexFirstRisk = planetToRisk[currPlanet].indexOf(currDay);
+
+				if(planetToRisk[currPlanet].length == 0 || indexFirstRisk == -1)
+					riskMap.push(0);
+				else{
+					var consecutiveRisk = 1;
+					var lastDayAtRisk = indexFirstRisk;
+					for(var j = indexFirstRisk+1; j < planetToRisk[currPlanet].length; j++){
+						if(planetToRisk[currPlanet][j] == lastDayAtRisk+1){
+							consecutiveRisk++;
+							lastDayAtRisk = planetToRisk[currPlanet][j];
+						}
+					}
+					riskMap.push(consecutiveRisk);
+				}
+			}
+
+			return riskMap;
 		}catch(err){ throw err; }
 	}
 
@@ -143,7 +377,7 @@ module.exports = function(Graph, MFalcon, Empire){
 
 			var pathString = '';
 			if(route.path.length == 1){
-				pathString = `|${route.path[i]}|`;
+				pathString = `|${route.path[0]}|`;
 			}else{
 				for(let i in route.path){
 					let displayStr = `${route.path[i]}`;
