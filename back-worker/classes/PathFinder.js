@@ -1,16 +1,11 @@
 "use strict";
 
-module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2){
+module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2, DepthLevel2, Timeout){
 	const Logger = require('./Logger.js');
 	const PathFinderToolBox = require('./PathFinderToolBox.js');
 	const pathFinderToolBox = new PathFinderToolBox(Graph, MFalcon, Empire);
 
-	var level1RouteArray = [];
-	var level2RouteArray = [];
-	var level1RoundCount = 0;
-	var level1DiscardedRouteArray = [];
-	var level2RoundCount = 0;
-	var level2DiscardedRouteArray = [];
+	var timeStarted = 0;
 
 	var updateRoute = function(route){
 		try{
@@ -19,23 +14,29 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 			var timeToPosition = pathFinderToolBox.computeTimeToPosition(route);
 			var chanceToMakeIt = pathFinderToolBox.computeChanceToMakeIt(Graph, timeToPosition);
 			var distanceScore = pathFinderToolBox.computeDistanceScore(timeToPosition);
-			var aggregatedScore = chanceToMakeIt + distanceScore;
+
+			var riskMap = pathFinderToolBox.computeRiskMap(route, Empire.bounty_hunters, timeToPosition);
 
 			for(var day in timeToPosition);
 			route.travelTime = parseInt(day);
-			route.score = { aggregatedScore: aggregatedScore, distanceScore: distanceScore, chanceToMakeIt: chanceToMakeIt };
+			
 			route.identifier = pathFinderToolBox.generateRouteIdentifier(route, timeToPosition);
 			route.liteIdentifier = pathFinderToolBox.generateRouteIdentifier(route, timeToPosition, true);
 			route.travelable = pathFinderToolBox.isRouteTravelable(route);
+			route.timeToPosition = timeToPosition;
+			route.riskMap = riskMap;
+			var riskScore = pathFinderToolBox.computeRiskScore(route);
+			var aggregatedScore = chanceToMakeIt + distanceScore + riskScore;			
+			route.score = { aggregatedScore: aggregatedScore, distanceScore: distanceScore, chanceToMakeIt: chanceToMakeIt, riskScore: riskScore };
 			route.perfect = (route.score.chanceToMakeIt == 100) ? true : false;
-
 			return route;
 		}catch(err){ throw err; }
 	}
 
 	var extendRoute = function(route){
-		var lWinston = Logger(`PathFinder-computeLevel1-computeRouteArray-extendRoute`, 4);
+		var lWinston = Logger(`PathFinder-computeLevel1-extendRoute`, 4);
 		try{
+			lWinston.log(`Finding out which possibilities we have to extend the current route (${route.liteIdentifier}).`);
 			var extendedRoutes = [];
 			
 			var lastRoutePlanet = route.path[route.path.length-1];
@@ -44,19 +45,7 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 			var links = Graph.planets[lastRoutePlanet].links;
 			for(let i in links){
 				let nextPosition = links[i].planet;
-				let newRoute = { 
-					path: route.path.slice(0)
-					, linkNumberMap: route.linkNumberMap.slice(0)
-					, waitMap: route.waitMap.slice(0)
-					, score: { aggregatedScore: route.score.aggregatedScore
-							, distanceScore: route.score.distanceScore
-							, chanceToMakeIt: route.score.chanceToMakeIt }
-					, travelTime: route.travelTime
-					, complete: route.complete
-					, travelable: route.travelable
-					, perfect: route.perfect
-					, identifier: route.identifier
-					, liteIdentifier: route.liteIdentifier };
+				let newRoute = pathFinderToolBox.cloneRoute(route);
 
 				if(newRoute.path.indexOf(nextPosition) != -1){
 					lWinston.warn(`Unable to add ${nextPosition} to route ${newRoute.liteIdentifier}. Deleting this route instance.`);
@@ -68,245 +57,194 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 					newRoute.waitMap.push(0);
 
 				updateRoute(newRoute);
-
-				extendedRoutes.push(newRoute);
+				if(newRoute.travelable)
+					extendedRoutes.push(newRoute);
 			}
 			return extendedRoutes;
 		}catch(err){ throw err; }
 	}
 
 	var improveRoute = function(route){
-		var lWinston = Logger(`PathFinder-computeLevel2-FindBestPathes-improveRoute`, 4);
+		var lWinston = Logger(`PathFinder-computeLevel2-improveRoute`, 4);
 		try{
 			var improvedRoutes = [];
 
 			for(let i in route.waitMap){
-				let newRoute = {
-					path: route.path.slice(0)
-					, linkNumberMap: route.linkNumberMap.slice(0)
-					, waitMap: route.waitMap.slice(0)
-					, score: { aggregatedScore: route.score.aggregatedScore
-							, distanceScore: route.score.distanceScore
-							, chanceToMakeIt: route.score.chanceToMakeIt }
-					, travelTime: route.travelTime
-					, complete: route.complete
-					, travelable: route.travelable
-					, perfect: route.perfect
-					, identifier: route.identifier
-					, liteIdentifier: route.liteIdentifier };
-				newRoute.waitMap[i] = newRoute.waitMap[i]+1;
+				var currPlanet = route.path[i];
+				for(let j in route.riskMap){
+					if(route.riskMap[j] == 0) continue;
+					if(!route.timeToPosition[j]) continue;
 
-				updateRoute(newRoute);
+					// I think we call that a gradient descent ?
+					for(var k = 1; Math.floor(route.riskMap[j]/k) > 1 && k < 10; k++){
+						let newRoute = pathFinderToolBox.cloneRoute(route);
+						newRoute.waitMap[i] += Math.floor(route.riskMap[j]/k);
+						updateRoute(newRoute);
+						if(newRoute.score.riskScore > route.score.riskScore && newRoute.travelable)
+							improvedRoutes.push(newRoute);
+					}
 
-				improvedRoutes.push(newRoute);
+					let newRoute = pathFinderToolBox.cloneRoute(route);
+					newRoute.waitMap[i] += 1;
+					updateRoute(newRoute);
+					if(newRoute.score.riskScore > route.score.riskScore && newRoute.travelable)
+						improvedRoutes.push(newRoute);					
+				}
 			}
 			return improvedRoutes;
 		}catch(err){ throw err; }
 	}	
 
-	var findValidPathes = function(){
+	var findValidPathes = function(routeArray){
 		var lWinston = Logger(`PathFinder-computeLevel1-findValidPathes`, 3);
 		try{
-			var allCompleteRoutes = [];
-			do{
-				level1RoundCount++;
+			var discardedRouteArray = [];
+			var roundCount = 0;
+
+			while(true){
+				roundCount++;
 				lWinston.log(``);
 				lWinston.log(`*******************************************************`);
 				lWinston.log(`*******************************************************`);
-				lWinston.log(`------------------->   Round ${level1RoundCount}   <---------------------`);
+				lWinston.log(`------------------->   Round ${roundCount}   <---------------------`);
 				lWinston.log(`*******************************************************`);
 				lWinston.log(`*******************************************************`);
 				lWinston.log(``);
 
-				let extendedRoutesArray = [];
-				let cleanedRoutesArray = [];
+				let selectedRoutesArray = [];
 
-				lWinston.log(`Updating score, identifier, complete, travelable and perfect flag for each route.`);
-				for(var i in level1RouteArray){
-					var currRoute = level1RouteArray[i];
-					if(currRoute.complete) continue;
+				lWinston.log(`Filling routes to compute with discarded ones to achieve heap size.`);
+				routeArray = routeArray.concat(discardedRouteArray.splice(0, HeapSizeLevel1));
 
-					updateRoute(currRoute);
-				}
-
-				lWinston.log(`Defining which routes we can extend.`);
-				var routesToExtendArray = [];
-				for(var i in level1RouteArray)
-					if(!level1RouteArray[i].complete && level1RouteArray[i].travelable)
-						routesToExtendArray.push(level1RouteArray[i]);
-				lWinston.log(`There are ${routesToExtendArray.length} routes to extend.`);
-
-				lWinston.log(`Defining which routes are complete.`);
-				for(var i in level1RouteArray)
-					if(level1RouteArray[i].complete && level1RouteArray[i].travelable)
-						cleanedRoutesArray.push(level1RouteArray[i]);
-				lWinston.log(`There are ${cleanedRoutesArray.length} completed routes.`);
-
-				lWinston.log(`Extending available uncomplete routes.`);
-				for(var i in routesToExtendArray){
-					lWinston.log(`Finding out which possibilities we have to extend the current route (${routesToExtendArray[i].liteIdentifier}).`);
-					let extendedRoutes = extendRoute(routesToExtendArray[i]);
-					extendedRoutesArray = extendedRoutesArray.concat(extendedRoutes);
-				}
-
-				lWinston.log(`Cleaning up extended routes.`);
-				for(var i in extendedRoutesArray)
-					if(extendedRoutesArray[i].travelable){
-						lWinston.log(`Route ${extendedRoutesArray[i].liteIdentifier} has a chance to make it of ${extendedRoutesArray[i].score.chanceToMakeIt}% and a two dimensional score of ${extendedRoutesArray[i].score.aggregatedScore}. Saving it for next round.`);
-						cleanedRoutesArray.push(extendedRoutesArray[i]);
-					}else{
-						lWinston.warn(`Route ${extendedRoutesArray[i].liteIdentifier} is not valid. Deleting this instance.`);
+				lWinston.log(`Updating ${routeArray.length} route meta. Defining which routes are extendable. Defining which routes are complete.`);
+				for(let i in routeArray){
+					let currRoute = routeArray[i];
+					if(!currRoute.complete)	updateRoute(currRoute);
+					if(!currRoute.complete && currRoute.travelable){
+						let extendedRoutes = extendRoute(currRoute);
+						if(extendedRoutes.length == 0) continue;
+						for(let j in extendedRoutes) selectedRoutesArray.push(extendedRoutes[j]);
 					}
+					else if(currRoute.complete && currRoute.travelable)
+						selectedRoutesArray.push(currRoute);
+				}
 
 				lWinston.log(`Removing duplicated routes.`);
-				let deduplicateObj = {};
-				for(let i=0; i < cleanedRoutesArray.length; i++)
-					deduplicateObj[cleanedRoutesArray[i].identifier] = cleanedRoutesArray[i];
-				cleanedRoutesArray = [];
-				for(let i in deduplicateObj)
-					cleanedRoutesArray.push(deduplicateObj[i]);				
+				selectedRoutesArray = pathFinderToolBox.dedupRoutes(selectedRoutesArray);
 
 				lWinston.log(`Sorting the resulting route array odds to make it then by route length.`);
-				var cmp = (a, b) => (a < b) - (a > b);
-				cleanedRoutesArray.sort((a, b) => {
-					return cmp(a.score.chanceToMakeIt, b.score.chanceToMakeIt) || cmp(a.score.distanceScore, b.score.distanceScore);
-				});
+				pathFinderToolBox.sortRoutes(selectedRoutesArray, "chanceThenDistance");
 
 				lWinston.log(`Discarding routes with the lowest score to fit in the maximum search stack size (${HeapSizeLevel1}).`);
-				if(cleanedRoutesArray.length > HeapSizeLevel1){
-					lWinston.log(`There is ${cleanedRoutesArray.length} routes available in the stack. That's more than the allowed search size (${HeapSizeLevel1}). Reducing resulting search array.`);
-					let toDiscardArray = cleanedRoutesArray.slice(HeapSizeLevel1, cleanedRoutesArray.length-1);
-					level1DiscardedRouteArray = level1DiscardedRouteArray.concat(toDiscardArray);
-					level1DiscardedRouteArray.sort((a, b) => {
-						return cmp(a.score.chanceToMakeIt, b.score.chanceToMakeIt) || cmp(a.score.distanceScore, b.score.distanceScore);
-					});
-					level1DiscardedRouteArray = level1DiscardedRouteArray.slice(0, HeapSizeLevel1);
-					cleanedRoutesArray = cleanedRoutesArray.slice(0, HeapSizeLevel1);
+				let scalpResults = pathFinderToolBox.scalpRoutes(selectedRoutesArray, discardedRouteArray, HeapSizeLevel1);
+				selectedRoutesArray = scalpResults[0];
+				discardedRouteArray = scalpResults[1];
+
+				routeArray = selectedRoutesArray;
+
+				var completeCount = 0;
+				for(let i in routeArray)
+					if(routeArray[i].complete) completeCount++;
+
+				lWinston.log(`There is ${routeArray.length} routes available in the stack.`);
+				lWinston.log(`There is ${completeCount} completed routes in the stack.`);
+
+				if(((new Date()).getTime()/1000) - timeStarted > Timeout){
+					lWinston.log(`Soft timeout (${Timeout} seconds) broken on level 1. You won't have improved results !`);
+					break;
 				}
+				if(completeCount != routeArray.length) continue;
+				else break;
+			}
 
-				lWinston.log(`There is ${cleanedRoutesArray.length} routes available in the stack.`);
-
-				level1RouteArray = cleanedRoutesArray;
-
-				var allCompleteRoutes = [];
-				for(let i in level1RouteArray)
-					if(level1RouteArray[i].complete)
-						allCompleteRoutes.push(level1RouteArray[i]);
-
-			}while(allCompleteRoutes.length != level1RouteArray.length);
+			return routeArray;
 		}catch(err){ throw err; }
 	}
 
-	var findBestPathes = function(){
-		var lWinston = Logger(`PathFinder-computeLevel2-findBestPathes`, 3);
+	var findBestPathes = function(routeArray){
+		var lWinston = Logger(`PathFinder-computeLevel2-findBestPathes`, 3);//{ log: function(){} };//
 		try{
 			var lastRoundIdentifierSum = '';
 			var countSimilar = 0;
-			do{
-				level2RoundCount++;
+
+			var discardedRouteArray = [];
+			var roundCount = 0;
+
+			var bestScore = -Infinity;
+			var nbRoundSinceBestScoreTopped = 0;
+
+			while(true){
+				roundCount++;
 				lWinston.log(``);
 				lWinston.log(`*******************************************************`);
 				lWinston.log(`*******************************************************`);
-				lWinston.log(`------------------->   Round ${level2RoundCount}   <---------------------`);
+				lWinston.log(`------------------->   Round ${roundCount}   <---------------------`);
 				lWinston.log(`*******************************************************`);
 				lWinston.log(`*******************************************************`);
 				lWinston.log(``);
 
-				let improvedRoutesArray = [];
-				let cleanedRoutesArray = [];
+				let selectedRoutesArray = [];
 
-				lWinston.log(`Updating score, identifier, complete, travelable and perfect flag for each route.`);
-				for(var i in level2RouteArray){
-					let currRoute = level2RouteArray[i];
-					if(currRoute.perfect) continue;
+				lWinston.log(`Filling routes to compute with discarded ones to achieve heap size.`);
+				routeArray = routeArray.concat(discardedRouteArray.splice(0, HeapSizeLevel2));
 
-					updateRoute(currRoute);
-				}
-
-				lWinston.log(`Defining which routes we can improve.`);
-				let routesToImproveArray = [];
-				for(var i in level2RouteArray)
-					if(level2RouteArray[i].travelable && !level2RouteArray[i].perfect)
-						routesToImproveArray.push(level2RouteArray[i]);
-				lWinston.log(`There are ${routesToImproveArray.length} routes to improve.`)			
-
-				lWinston.log(`Defining which routes are perfect.`);
-				for(var i in level2RouteArray){
-					cleanedRoutesArray.push(level2RouteArray[i]);
-				}
-				lWinston.log(`There are ${cleanedRoutesArray.length} perfect routes.`);
-
-				lWinston.log(`Improving available routes.`);
-				for(var i in routesToImproveArray){
-					lWinston.log(`Finding out which possibilities we have to improve the current route (${routesToImproveArray[i].liteIdentifier}).`);
-					let improvedRoutes = improveRoute(routesToImproveArray[i]);
-					improvedRoutesArray = improvedRoutesArray.concat(improvedRoutes);
-				}
-
-				lWinston.log(`Cleaning up improved routes.`);
-				for(var i in improvedRoutesArray)
-					if(improvedRoutesArray[i].travelable){
-						lWinston.log(`Route ${improvedRoutesArray[i].liteIdentifier} has a chance to make it of ${improvedRoutesArray[i].score.chanceToMakeIt}% and a two dimensional score of ${improvedRoutesArray[i].score.aggregatedScore}. Saving it for next round.`);
-						cleanedRoutesArray.push(improvedRoutesArray[i]);
-					}else{
-						lWinston.warn(`Route ${improvedRoutesArray[i].liteIdentifier} is not valid. Deleting this instance.`);
+				lWinston.log(`Updating ${routeArray.length} route meta. Defining which routes are improvable. Defining which routes are perfect.`);
+				for(var i in routeArray){
+					let currRoute = routeArray[i];
+					if(!currRoute.perfect) updateRoute(currRoute);
+					if(!currRoute.perfect){
+						let improvedRoutes = improveRoute(currRoute);
+						if(improvedRoutes.length == 0) continue;
+						for(let j in improvedRoutes) selectedRoutesArray.push(improvedRoutes[j]);
 					}
+					else selectedRoutesArray.push(currRoute);
+				}
 
 				lWinston.log(`Removing duplicated routes.`);
-				let deduplicateObj = {};
-				for (let i=0; i < cleanedRoutesArray.length; i++)
-					deduplicateObj[cleanedRoutesArray[i].identifier+cleanedRoutesArray[i].waitMap.toString()] = cleanedRoutesArray[i];
-				cleanedRoutesArray = [];
-				for (let i in deduplicateObj)
-					cleanedRoutesArray.push(deduplicateObj[i]);
+				selectedRoutesArray = pathFinderToolBox.dedupRoutes(selectedRoutesArray, "hard");
 
 				lWinston.log(`Sorting the resulting route array odds to make it then by route length.`);
-				let cmp = (a, b) => (a < b) - (a > b);
-				cleanedRoutesArray.sort((a, b) => {
-					return cmp(a.score.chanceToMakeIt, b.score.chanceToMakeIt) || cmp(a.score.distanceScore, b.score.distanceScore);
-				});
+				pathFinderToolBox.sortRoutes(selectedRoutesArray, "risk");
 
-				lWinston.log(`Discarding routes with the lowest score to fit in the maximum search stack size (${HeapSizeLevel2}).`);
-				if(cleanedRoutesArray.length > HeapSizeLevel2){
-					lWinston.log(`There is ${cleanedRoutesArray.length} routes available in the stack. That's more than the allowed search size (${HeapSizeLevel2}). Reducing resulting search array.`);
-					let toDiscardArray = cleanedRoutesArray.slice(HeapSizeLevel2, cleanedRoutesArray.length-1);
-					level2DiscardedRouteArray = level2DiscardedRouteArray.concat(toDiscardArray);
-					level2DiscardedRouteArray.sort((a, b) => {
-						return cmp(a.score.chanceToMakeIt, b.score.chanceToMakeIt) || cmp(a.score.distanceScore, b.score.distanceScore);
-					});
-					if(level2DiscardedRouteArray.length > HeapSizeLevel2)
-						level2DiscardedRouteArray = level2DiscardedRouteArray.slice(0, HeapSizeLevel2);
-					cleanedRoutesArray = cleanedRoutesArray.slice(0, HeapSizeLevel2);
+				if(selectedRoutesArray[0] && bestScore < selectedRoutesArray[0].score.riskScore){
+					lWinston.log(`Best risk score ${bestScore} topped at ${selectedRoutesArray[0].score.riskScore} ! A new hope..`);
+					bestScore = selectedRoutesArray[0].score.riskScore;
+					nbRoundSinceBestScoreTopped = 0;
+				}else{
+					lWinston.log(`Best risk score ${bestScore} unegaled ! ${DepthLevel2 - nbRoundSinceBestScoreTopped} round to go.`);
+					nbRoundSinceBestScoreTopped++;
 				}
-
-				lWinston.log(`There is ${cleanedRoutesArray.length} routes available in the stack.`);
-
-				if(cleanedRoutesArray.length > 0)
-					level2RouteArray = cleanedRoutesArray;
-
-				let newRoundIdentifierSum = "";
-				for(let i in level2RouteArray)
-					newRoundIdentifierSum += level2RouteArray[i].identifier;
-
-				if(lastRoundIdentifierSum == newRoundIdentifierSum) countSimilar++;
-				if(countSimilar > 2){
-					lWinston.log(`This loop yield identical results than the last. Break !`);
-					break;
-				}
-
-				let allPerfectRoutes = [];
-				for(let i in level2RouteArray)
-					if(level2RouteArray[i].perfect)
-						allPerfectRoutes.push(level2RouteArray[i]);
-
-				if(allPerfectRoutes.length == level2RouteArray.length){
-					lWinston.log(`We got a full panel of perfect routes. Break !`);
-					break;
-				}
-
-				lastRoundIdentifierSum = newRoundIdentifierSum;
 				
-			}while(true);
+				if(selectedRoutesArray.length > HeapSizeLevel2){
+					lWinston.log(`Discarding routes with the lowest score to fit in the maximum search stack size (${HeapSizeLevel2}).`);
+					let scalpResults = pathFinderToolBox.scalpRoutes(selectedRoutesArray, discardedRouteArray, HeapSizeLevel2);
+					selectedRoutesArray = scalpResults[0];
+					discardedRouteArray = scalpResults[1];
+					pathFinderToolBox.sortRoutes(discardedRouteArray, "chanceThenRisk")
+				}
+
+				routeArray = selectedRoutesArray;
+				
+				lWinston.log(`There is ${discardedRouteArray.length} discarded routes in the stack.`);
+				lWinston.log(`There is ${routeArray.length} routes available in the stack.`);
+
+				var perfectIsFound = false;
+				for(let i in routeArray)
+					if(routeArray[i].perfect) 
+						perfectIsFound = true;
+
+				if(((new Date()).getTime()/1000) - timeStarted > Timeout){
+					lWinston.log(`Soft timeout (${Timeout} seconds) broken on level 2. Returning whatever we got !`);
+					break;
+				}
+				if(perfectIsFound) break;
+				if(routeArray.length == 0 && discardedRouteArray.length == 0) break;
+				if(nbRoundSinceBestScoreTopped > DepthLevel2) break;
+			}
+
+			routeArray = routeArray.concat(discardedRouteArray);
+
+			return routeArray;
 		}catch(err){ throw err; }
 	}
 
@@ -322,59 +260,14 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 			lWinston.log(``);
 
 			lWinston.log(`Finding out the best routes, level 1.`);
-
-			lWinston.log(`Initialising the search with all the routes linked to start planet.`);
-			for(var i in Graph.planets[MFalcon.departure].links){
-				var currRoute = { 
-					path: [MFalcon.departure]
-					, linkNumberMap: [0]
-					, waitMap: [0]
-					, timeToPosition: {}
-					, score: { aggregatedScore: 0
-							, distanceScore: 0
-							, chanceToBeCaptured: 0 }
-					, travelTime: 0
-					, complete: false
-					, travelable: true
-					, perfect: false };
-
-				currRoute.path.push(Graph.planets[MFalcon.departure].links[i].planet);
-				currRoute.linkNumberMap.push(parseInt(i));
-				currRoute.waitMap.push(0);
-				level1RouteArray.push(currRoute);
-			}
-
 			lWinston.log(`Starting the search loop.`);
-			level1RoundCount = 0;
-			while(true){
-				var cmp = (a, b) => (a < b) - (a > b);
-				level1DiscardedRouteArray.sort((a, b) => {
-					return cmp(a.score.chanceToMakeIt, b.score.chanceToMakeIt) || cmp(a.score.distanceScore, b.score.distanceScore);
-				});				
-				var routesToAdd = level1DiscardedRouteArray.slice(0, HeapSizeLevel1 - level1RouteArray.length);
-				level1DiscardedRouteArray = level1DiscardedRouteArray.slice(HeapSizeLevel1 - level1RouteArray.length, level1DiscardedRouteArray.length - 1);
-				for(var i in routesToAdd) level1RouteArray.push(routesToAdd[i]);
 
-				findValidPathes();
-
-				if(level1DiscardedRouteArray.length == 0){
-					lWinston.log(`There are no more routes to assess. Stopping here.`);
-					break;
-				}
-				if(level1RouteArray.length == HeapSizeLevel1){
-					lWinston.log(`We found enough valid routes. Stopping here.`);
-					break;
-				}
-				if(level1RouteArray.length < HeapSizeLevel1){
-					lWinston.log(`There are more routes to assess, and we still have rounds to consume. Continuing.`);
-					continue;
-				}
-			}
-
+			var baseRoute = pathFinderToolBox.createRoute(MFalcon.departure);
+			return findValidPathes([baseRoute]);
 		}catch(err){ throw err; }
 	}
 
-	var computeLevel2 = function(){
+	var computeLevel2 = function(routeArray){
 		var lWinston = Logger(`PathFinder-computeLevel2`, 2);
 		try{
 			lWinston.log(``);
@@ -386,83 +279,39 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 			lWinston.log(``);
 
 			lWinston.log(`Finding out the best routes, level 2.`);
-
 			lWinston.log(`Initialising the search with all the routes computed level 1.`);
-			level2RouteArray = level1RouteArray;
 
-			lWinston.log(`Starting the search loop.`);
-			level2RoundCount = 0;
-			while(true){				
-				var cmp = (a, b) => (a < b) - (a > b);
-				level2DiscardedRouteArray.sort((a, b) => {
-					return cmp(a.score.chanceToMakeIt, b.score.chanceToMakeIt) || cmp(a.score.distanceScore, b.score.distanceScore);
-				});	
-				var routesToAdd = level2DiscardedRouteArray.slice(0, HeapSizeLevel2 - level2RouteArray.length);
-				level2DiscardedRouteArray = level2DiscardedRouteArray.slice(HeapSizeLevel2 - level2RouteArray.length, level2DiscardedRouteArray.length - 1);
-				for(var i in routesToAdd) level2RouteArray.push(routesToAdd[i]);
-
-				findBestPathes();
-				
-				lWinston.log(`Removing duplicated routes (waitMap && refuelMap might have crossed).`);
-				let deduplicateObj = {};
-				for (let i=0; i < level2RouteArray.length; i++)
-					deduplicateObj[level2RouteArray[i].identifier] = level2RouteArray[i];
-				level2RouteArray = [];
-				for (let i in deduplicateObj)
-					level2RouteArray.push(deduplicateObj[i]);				
-
-				if(level2DiscardedRouteArray.length == 0){
-					lWinston.log(`There are no more routes to assess. Stopping here.`);
-					break;
-				}
-				if(level2RouteArray.length == HeapSizeLevel2){
-					let allPerfectRoutes = [];
-					for(let i in level2RouteArray)
-						if(level2RouteArray[i].perfect)
-							allPerfectRoutes.push(level2RouteArray[i]);				
-					if(allPerfectRoutes.length == 0){
-						lWinston.log(`We found enough ${HeapSizeLevel2} routes. But none are 100%. Removing forcibly 1/3 of them and continuing.`);
-						level2RouteArray = level2RouteArray.slice(0, Math.round((level2RouteArray.length/3)*2));
-						continue;
-					}else{
-						lWinston.log(`We found enough valid and perfect routes. Stopping here.`);
-						break;
-					}
-				}
-				if(level2RouteArray.length < HeapSizeLevel2){
-					lWinston.log(`There are more routes to assess, and we still have rounds to consume. Continuing.`);
-					continue;
-				}
-			}
-
-
+			return findBestPathes(routeArray);
 		}catch(err){ throw err; }
 	}
 
 	this.computePath = function(){
 		var lWinston = Logger(`PathFinder-computePath`, 1);
 		try{
+			lWinston.log(`Setting up a timer to forcibly return after ${Timeout} seconds.`);
+			timeStarted = (new Date()).getTime()/1000;
+
 			lWinston.log(`Computing level 1, finding out completes routes.`);
-			computeLevel1();
+			var level1RouteArray = computeLevel1();
 			if(level1RouteArray.length == 0){
 				lWinston.error(`No route are traversable with given parameters.`);
 				return level1RouteArray;
 			}
 
 			lWinston.log(`Computing level 2, finding out best pauses to make.`);
-			computeLevel2();
+			var level2RouteArray = computeLevel2(level1RouteArray);
 			if(level2RouteArray.length == 0){
 				lWinston.error(`No route are improvable by waiting with given parameters.`);
 				return level1RouteArray;
 			}
+			
+			var finalArray = level2RouteArray.concat(level1RouteArray);
+			pathFinderToolBox.sortRoutes(finalArray, "chanceThenDistance");
 
-			lWinston.log(`Found ${level2RouteArray.length} routes that could make it.`);
-			var cmp = (a, b) => (a > b) - (a < b);
-			level2RouteArray.sort((a, b) => {
-				return cmp(b.score.chanceToMakeIt, a.score.chanceToMakeIt);
-			});
+			lWinston.log(`Found ${finalArray.length} routes that could make it.`);
+			lWinston.log(`Full execution took ${((new Date()).getTime()/1000)-timeStarted} seconds.`);
 
-			return level2RouteArray;
+			return finalArray;
 		}catch(err){ throw err; }
 	}
 }
