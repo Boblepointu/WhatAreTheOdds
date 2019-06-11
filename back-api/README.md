@@ -1,4 +1,5 @@
 # Millenium Falcon computer interface (back-api)
+
 A translator for the Millenium Falcon !
 
 ## Compatibility
@@ -27,11 +28,14 @@ yarn run start
 ```
 
 ## Requirements
+
 In order to make this api work, you need to have a working copy of the `back-worker` app into the `./worker` folder, as well as a working copy of a compiled `front` into the `public` folder. See `../build.sh` for more informations.
 
 ## Configuration
+
 You can edit the `./config.json` file or set environment variables to change a few settings.
 Please note that if set, an environment variable will override the config setting.
+Please note that if the config file entry is missing and no environment variable is set, the app will gracefully rely on hardcoded values.
 
 #### MaxSimultaneousComputation 
   - Config file entry : "MaxSimultaneousComputation"
@@ -58,8 +62,10 @@ Please note that if set, an environment variable will override the config settin
   - Description : How many computed routes will we display front side ?
 
 ## Running
+
 Once dependencies are resolved, you can launch one of the few project `npm commands` :
   - `yarn run start` => Will launch the app.
 
 ## Todo
+
 - Maybe cleanup the express main route, if it were to be extended.
