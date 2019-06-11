@@ -24,12 +24,24 @@ const AreInputValids = function(Empire, MFalcon, Universe){
 			winston.error('No origin column in universe db !');
 			return false;
 		}
+		if(typeof Universe[i].origin != "string"){
+			winston.error('Origin column in universe db isn\'t yielding strings !');
+			return false;
+		}		
 		if(!Universe[i].destination){
 			winston.error('No destination column in universe db !');
 			return false;
 		}
+		if(typeof Universe[i].destination != "string"){
+			winston.error('Destination column in universe db isn\'t yielding strings !');
+			return false;
+		}		
 		if(!Universe[i].travel_time){
 			winston.error('No travel_time column in universe db !');
+			return false;
+		}		
+		if(!Number.isInteger(Universe[i].travel_time)){
+			winston.error('Travel time column in db isn\'t yielding integers !');
 			return false;
 		}
 	}
@@ -42,10 +54,20 @@ const AreInputValids = function(Empire, MFalcon, Universe){
 	if(!MFalcon.departure){
 		winston.error('No departure entry in MFalcon data !');
 		return false;		
+	}
+
+	if(typeof MFalcon.departure != "string"){
+		winston.error('Departure entry in MFalcon data is not a string !');
+		return false;		
 	}	
 
 	if(!MFalcon.arrival){
 		winston.error('No arrival entry in MFalcon data !');
+		return false;		
+	}
+
+	if(typeof MFalcon.arrival != "string"){
+		winston.error('Arrival entry in MFalcon data is not a string !');
 		return false;		
 	}
 
@@ -59,6 +81,11 @@ const AreInputValids = function(Empire, MFalcon, Universe){
 		return false;		
 	}
 
+	if(!Number.isInteger(MFalcon.autonomy)){
+		winston.error('Autonomy entry in MFalcon data is not an integer !');
+		return false;		
+	}	
+
 	if(!Empire){
 		winston.error('No Empire intel given !');
 		return false;
@@ -67,12 +94,9 @@ const AreInputValids = function(Empire, MFalcon, Universe){
 		winston.error('To compute, we need data about the empire countdown.');
 		return false;
 	}
-	if(Empire.countdown){
-		try{ parseInt(Empire.countdown); }
-		catch(err){
-			winston.error('The given countdown isn\'t an integer !');
-			return false;
-		}
+	if(!Number.isInteger(Empire.countdown)){
+		winston.error('The given countdown isn\'t an integer !');
+		return false;
 	}
 	if(!Empire.bounty_hunters){
 		winston.error('Bounty hunters intel is necessary, even as an empty array.');
