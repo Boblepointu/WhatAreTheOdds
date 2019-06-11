@@ -227,66 +227,6 @@ module.exports = function(Graph, MFalcon, Empire){
 		}catch(err){ throw err; }
 	}
 
-	this.computeDodgeMap = function(route, bhArray, timeToPosition){
-		try{
-			bhArray.sort((a, b) => { return a.day - b.day; });
-
-			var planetToRisk = [];
-			for(var i in bhArray){
-				if(!planetToRisk[bhArray[i].planet] && route.path.indexOf(bhArray[i].planet) != -1) planetToRisk[bhArray[i].planet] = [];
-				if(route.path.indexOf(bhArray[i].planet) == -1) continue;
-
-				if(planetToRisk[bhArray[i].planet].indexOf(bhArray[i].day) != -1) continue;
-				planetToRisk[bhArray[i].planet].push(bhArray[i].day);
-			}
-
-			console.log(planetToRisk);
-			console.log(timeToPosition);
-			console.log(route.riskMap);
-
-			var dodgeMap = [];
-			for(var i in route.riskMap)
-				dodgeMap.push(0);
-			for(var i in route.riskMap){
-				if(dodgeMap[i-1] === undefined) continue;
-				dodgeMap[i-1] = route.riskMap[i];
-			}
-
-			console.log(dodgeMap);
-			process.exit();
-
-
-
-			for(var i in timeToPosition){
-				var currDay = parseInt(i);
-				var currPlanet = timeToPosition[i].planet;
-				
-				if(!planetToRisk[currPlanet]){
-					riskMap.push(0);
-					continue;
-				}
-
-				var indexFirstRisk = planetToRisk[currPlanet].indexOf(currDay);
-
-				if(planetToRisk[currPlanet].length == 0 || indexFirstRisk == -1)
-					riskMap.push(0);
-				else{
-					var consecutiveRisk = 1;
-					var lastDayAtRisk = indexFirstRisk;
-					for(var j = indexFirstRisk+1; j < planetToRisk[currPlanet].length; j++){
-						if(planetToRisk[currPlanet][j] == lastDayAtRisk+1){
-							consecutiveRisk++;
-							lastDayAtRisk = planetToRisk[currPlanet][j];
-						}
-					}
-					riskMap.push(consecutiveRisk);
-				}
-			}
-
-			return riskMap;
-		}catch(err){ throw err; }
-	}
-
 	this.computeChanceToMakeIt = function(Graph, timeToPosition){
 		var lWinston = Logger(`PathFinderToolBox-computeChanceToMakeIt`, 5);
 		try{
