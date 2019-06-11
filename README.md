@@ -48,7 +48,7 @@ Millenium Falcon computer is designed to work with minimum dependency hassle. He
 cd ~
 # Clone this repository
 git clone https://github.com/Boblepointu/WhatAreTheOdds.git && cd WhatAreTheOdds
-# Launch the app build
+# Build the app
 bash build.sh
 # Launch the app
 cd back-api && yarn run start
@@ -62,6 +62,36 @@ The app is composed of three block :
 - The API : Serve the front application and relay compute requests to workers. [see readme](./back-api/README.md).
 - The WORKER : Do all the heavy lifting to find a way around this hostile universe. [see readme](./back-worker/README.md).
 - The C3PO : The frontend application. You talk to it, it find a way to get it right ! [see readme](./front/README.md).
+
+## Raw usage examples
+
+### Pass a custom `millenium-falcon.json` file
+
+```bash
+# Build the app
+bash build.sh
+# Cleanup placeholder data
+rm -rf ./back-api/worker/dataset/live/millenium-falcon.json
+cp /home/millenium-falcon.json ./back-api/worker/dataset/live/millenium-falcon.json
+# Launch the app
+cd back-api && yarn run start
+# Launch browser on 'http://127.0.0.1:3000'
+```
+
+## Docker usage examples
+
+### Pass a custom `millenium-falcon.json` file
+
+```bash
+docker run -p 3000:3000 -v /home/millenium-falcon.json:/app/back-api/worker/dataset/live/millenium-falcon.json whataretheodds:latest
+```
+
+### Pass a custom `millenium-falcon.json` file and a custom `universe.db` file
+
+```bash
+docker run -p 3000:3000 -v /home/millenium-falcon.json:/app/back-api/worker/dataset/live/millenium-falcon.json -v /home/universe.db:/app/back-api/worker/dataset/live/universe.db whataretheodds:latest
+```
+Note : You can place the `universe.db` wherever you want, as long as its path is well referenced into the `millenium-falcon.json` file.
 
 ## Configuration
 
@@ -139,19 +169,3 @@ You can also hard set these variables into corresponding `config.json` files.
   - Environment variable : LOG_LEVEL
   - Example value : 3
   - Description : Given the nature of the app, loglevels must be managed to prevent output cluttering. Each level added will activate one 'functional' deeper. LogLevel 3 is advised; LogLevel 4 and 5 output way too much data.
-
-  
-  
-## Docker usage examples
-
-### Pass a custom `millenium-falcon.json` file
-
-```bash
-docker run -p 3000:3000 -v /home/millenium-falcon.json:/app/back-api/worker/dataset/live/millenium-falcon.json whataretheodds:latest
-```
-
-### Pass a custom `millenium-falcon.json` file and a custom `universe.db` file
-
-```bash
-docker run -p 3000:3000 -v /home/millenium-falcon.json:/app/back-api/worker/dataset/live/millenium-falcon.json -v /home/universe.db:/app/back-api/worker/dataset/live/universe.db whataretheodds:latest
-```
