@@ -1,9 +1,10 @@
 "use strict";
 
-const DbReader = require('./classes/DbReader.js');
+
 const BuildGraph = require('./classes/GraphBuilder.js');
 const Logger = require('./classes/Logger.js');
 const PathFinder = require('./classes/PathFinder.js');
+const Toolbox = new (require('./classes/Toolbox.js'))();
 const Config = require('./config.json');
 
 const HeapSizeLevel1 = process.env.HEAP_SIZE_LEVEL_1 || Config.HeapSizeLevel1 || 10;
@@ -12,168 +13,31 @@ const Depth = process.env.DEPTH || Config.Depth || 50;
 const MFalconConfigPath = process.env.MFALCON_CONFIG_PATH || Config.MFalconConfigPath || './dataset/live/millenium-falcon.json';
 const HardTimeoutSec = process.env.HARD_TIMEOUT_SEC || Config.HardTimeoutSec || 60;
 const SoftTimeoutSec = process.env.SOFT_TIMEOUT_SEC || Config.SoftTimeoutSec || 30;
-
-const AreInputValids = function(Empire, MFalcon, Universe){
-	var winston = Logger(`SanitizeInputs`);
-	if(!Universe){
-		winston.error('No Universe parameters given !');
-		return false;
-	}
-	for(var i in Universe){
-		if(!Universe[i].origin){
-			winston.error('No origin column in universe db !');
-			return false;
-		}
-		if(typeof Universe[i].origin != "string"){
-			winston.error('Origin column in universe db isn\'t yielding strings !');
-			return false;
-		}		
-		if(!Universe[i].destination){
-			winston.error('No destination column in universe db !');
-			return false;
-		}
-		if(typeof Universe[i].destination != "string"){
-			winston.error('Destination column in universe db isn\'t yielding strings !');
-			return false;
-		}		
-		if(!Universe[i].travel_time){
-			winston.error('No travel_time column in universe db !');
-			return false;
-		}		
-		if(!Number.isInteger(Universe[i].travel_time)){
-			winston.error('Travel time column in db isn\'t yielding integers !');
-			return false;
-		}
-	}
-
-	if(!MFalcon){
-		winston.error('No MFalcon parameters given !');
-		return false;		
-	}
-
-	if(!MFalcon.departure){
-		winston.error('No departure entry in MFalcon data !');
-		return false;		
-	}
-
-	if(typeof MFalcon.departure != "string"){
-		winston.error('Departure entry in MFalcon data is not a string !');
-		return false;		
-	}	
-
-	if(!MFalcon.arrival){
-		winston.error('No arrival entry in MFalcon data !');
-		return false;		
-	}
-
-	if(typeof MFalcon.arrival != "string"){
-		winston.error('Arrival entry in MFalcon data is not a string !');
-		return false;		
-	}
-
-	if(!MFalcon.routes_db){
-		winston.error('No routes_db entry in MFalcon data !');
-		return false;		
-	}
-
-	if(!MFalcon.autonomy){
-		winston.error('No autonomy entry in MFalcon data !');
-		return false;		
-	}
-
-	if(!Number.isInteger(MFalcon.autonomy)){
-		winston.error('Autonomy entry in MFalcon data is not an integer !');
-		return false;		
-	}	
-
-	if(!Empire){
-		winston.error('No Empire intel given !');
-		return false;
-	}
-	if(!Empire.countdown){
-		winston.error('To compute, we need data about the empire countdown.');
-		return false;
-	}
-	if(!Number.isInteger(Empire.countdown)){
-		winston.error('The given countdown isn\'t an integer !');
-		return false;
-	}
-	if(!Empire.bounty_hunters){
-		winston.error('Bounty hunters intel is necessary, even as an empty array.');
-		return false;
-	}
-	if(Empire.bounty_hunters){
-		if(!Array.isArray(Empire.bounty_hunters)){
-			winston.error('Bounty hunters intel is not presented as an array.');
-			return false;
-		}
-		for(var i in Empire.bounty_hunters){
-			if(!Empire.bounty_hunters[i].planet){
-				winston.error('Every bounty hunters intel need a planet.');
-				return false;
-			}
-			if(typeof Empire.bounty_hunters[i].planet != "string"){
-				winston.error('All bounty hunter planet arguments must be a string !');
-				return false;
-			}
-			if(!Number.isInteger(Empire.bounty_hunters[i].day)){
-				winston.error('All bounty hunter day arguments must be an integer !');
-				return false;
-			}				
-			if(!Empire.bounty_hunters[i].day && Empire.bounty_hunters[i].day != 0){
-				winston.error('Every bounty hunters intel need a day.');
-				return false;
-			}
-			try{ parseInt(Empire.bounty_hunters[i].day); }
-			catch(err){
-				winston.error('The day parameter of every bounty hunters intel must be given as an int.');
-				return false;
-			}
-			if(Empire.bounty_hunters[i].day < 0){
-				winston.error('The day parameter of every bounty hunters intel must be positive.');
-				return false;
-			}			
-			if(typeof Empire.bounty_hunters[i].planet != "string"){
-				winston.error('The planet parameter of every bounty hunters intel must be given as a string.');
-				return false;
-			}
-			if(Empire.bounty_hunters[i].planet.length == 0){
-				winston.error('The planet parameter of every bounty hunters intel must have more than 0 character.');
-				return false;
-			}			
-		}
-	}
-	return true;
-}
-
-const GetData = async function(mainPath){
-	var mFalcon = require(mainPath);
-	return {
-		MFalcon: mFalcon,
-		Universe: await (new DbReader()).readRouteEntries(mFalcon.routes_db)
-	}
-}
-
-const Sleep = function(ms){
-	return new Promise((resolve, reject) => {
-		setTimeout(resolve, ms);
-	});
-}
+const IsApiCall = (process.argv[2]) ? true : false;
 
 const main = async function(){
 	var winston = Logger(`Main`);
 	try{
-		winston.log(`Retrieving dataset '${MFalconConfigPath}'`);
-		var DataSet = await GetData(MFalconConfigPath);
+		winston.log('Validating given arguments are valids.')
+		if(!Toolbox.areAppArgumentsValid(HeapSizeLevel1, HeapSizeLevel2, Depth, MFalconConfigPath, HardTimeoutSec, SoftTimeoutSec)){
+			winston.error('Some config/env vars arn\'t valid. Fatal, killing process.');
+			process.exit();
+		}
+
+		winston.log(`Retrieving Millenium Falcon attributes & Universe graph from memory (${MFalconConfigPath}).`);
+		var DataSet = await Toolbox.readData(MFalconConfigPath);
 		var MFalcon = DataSet.MFalcon;
 		var Universe = DataSet.Universe;
 		var Empire;
 
-		if(!process.argv[2]){
+		if(!IsApiCall){
+			winston.log(`We were called from the command line. Starting process.`);
+
 			var empireConfigPath = MFalconConfigPath.split('/');
 			delete empireConfigPath[empireConfigPath.length-1];
 			empireConfigPath = `${empireConfigPath.join('/')}/empire.json`;
 
+			winston.log(`Reading Empire intel data from file (${empireConfigPath}).`);
 			Empire = require(empireConfigPath);
 
 			if(!AreInputValids(Empire, MFalcon, Universe)){
@@ -181,48 +45,67 @@ const main = async function(){
 				process.exit();
 			}
 
+			winston.log(`Building graph for given Universe.`);
 			var graph = await BuildGraph(Universe, Empire.bounty_hunters);
-			winston.log(`We were inited from the command line.`);
+			winston.log(`Finding out the best pathes !`);
 			var pathFinder = new PathFinder(MFalcon, Empire, graph, HeapSizeLevel1, HeapSizeLevel2, Depth, SoftTimeoutSec);
 			var resultArray = pathFinder.computePath();
-			//console.log(resultArray);
+
+			winston.log(`Got ${resultArray.length} results !`);
+			for(var i in resultArray){
+				var currRoute = resultArray[i];
+				winston.log(`Route #${i} : ${currRoute.score.chanceToMakeIt}% -- ${currRoute.identifier}`);
+			}
 		}else{
+			winston.log(`We were called from the api. Starting process.`);
+
 			winston.log(`Safeguarding with a hard timeout of ${HardTimeoutSec} seconds.`);
 			var hardTimeoutHandle = setTimeout(() => { 
 				winston.log(`Hitted hard timeout of ${HardTimeoutSec} seconds. Killing instance.`);
 				process.exit();
 			}, HardTimeoutSec*1000);
 
-			winston.log(`We were inited from the back api.`);
-			process.on('message', empireIntel => { Empire = empireIntel; });
+			winston.log(`Signalling to the API that we are ready.`);
+			process.once('message', empireIntel => { winston.log(`Got empire intel data.`); Empire = empireIntel; });
 			process.send('ready');
 
+			winston.log(`Setting up a timeout to avoid phantom processes, in case of api worker managemetn errors.`);
 			var timeoutHandle = setTimeout(() => {
-				winston.log(`Timeout waiting for ipc input from the api. Killed.`);
+				winston.error(`Timeout waiting for ipc input from the api. Killed.`);
 				process.exit();
 			}, 5000);
 
 			winston.log(`Waiting for the client empire intel.`);
-			while(!Empire) await Sleep(50);
+			while(!Empire) await Toolbox.sleep(50);
 			clearTimeout(timeoutHandle);
 
-			if(!AreInputValids(Empire, MFalcon, Universe)){
-				winston.error('FATAL => Your input (empire || millenium-falcon || universe) json are invalid ! Stopping here.');
+			if(!Toolbox.areInputsValid(Empire, MFalcon, Universe)){
+				winston.error('FATAL => Your input (Empire || MFalcon || Universe) json are invalid ! Killed.');
 				process.exit();
 			}
 
 			winston.log(`Got empire data ! Ready to ruuuuumble !`);
 
+			winston.log(`Building graph for given Universe.`);
 			var graph = await BuildGraph(Universe, Empire.bounty_hunters);
 			var pathFinder = new PathFinder(MFalcon, Empire, graph, HeapSizeLevel1, HeapSizeLevel2, Depth, SoftTimeoutSec);
+			winston.log(`Finding out the best pathes !`);
 			var resultArray = pathFinder.computePath();
+
+			winston.log(`Clearing hard timeout.`);
+			clearTimeout(hardTimeoutHandle);
+
+			winston.log(`Got ${resultArray.length} results !`);
+			for(var i in resultArray){
+				var currRoute = resultArray[i];
+				winston.log(`Route #${i} : ${currRoute.score.chanceToMakeIt}% -- ${currRoute.identifier}`);
+			}
 			
 			winston.log(`Sending results to api process.`);
 			process.send(resultArray);
-			clearTimeout(hardTimeoutHandle);
 
 			winston.log(`Process will exit in 5 seconds.`);
-			setInterval(process.exit, 5000);
+			await Toolbox.sleep(5000);
 		}
 	}catch(err){
 		console.log(err);

@@ -90,11 +90,7 @@ if(Cluster.isMaster){
 			winston.log(`Sanitizing input parameters.`);
 			Empire = Toolbox.sanitizeEmpireIntel(Empire);
 
-			var worker = new Worker();
-			await worker.spawn(Empire);
-			
-			winston.log(`Incrementing cluster worker count.`);
-			process.send('newSpawn');
+			var worker;
 
 			var onError = err => {
 				winston.error('Worker died prematurily.');
@@ -114,9 +110,11 @@ if(Cluster.isMaster){
 				process.send('newDeath');
 			};
 
-			winston.log(`Binding worker listeners.`);
-			worker.on('error', onError);
-			worker.on('done', onDone);
+			worker = new Worker(onError, onDone);
+			await worker.spawn(Empire);
+			
+			winston.log(`Incrementing cluster worker count.`);
+			process.send('newSpawn');
 		}catch(err){
 			winston.error(err);
 			res.status(500);

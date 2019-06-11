@@ -1,10 +1,10 @@
-var Worker = function(){
+var Worker = function(onError, onDone){
 	const Spawn = require('child_process').spawn;
 	const Path = require('path');
 	const AppDir = Path.dirname(require.main.filename);
 	const Logger = require('./Logger.js');
 	const winston = new Logger('Worker');
-
+	
 	var childHandler;
 	var Empire;
 	var computationFinished = false;
@@ -31,6 +31,9 @@ var Worker = function(){
 		this.emit('done', data);
 	};
 
+	winston.log(`Binding given listeners for error and done.`);
+	this.on('error', onError);
+	this.on('done', onDone);
 
 	this.spawn = function(empire){
 		return new Promise((resolve, reject) => {
@@ -51,7 +54,7 @@ var Worker = function(){
 						resolve();
 						childHandler.once('message', resultListener);
 					}else{
-						winston.error(`Child didn't initialised correctly ! Force closing.`);
+						winston.error(`Child didn't initialise correctly ! Force closing.`);
 						childHandler.kill();
 						reject();
 					}

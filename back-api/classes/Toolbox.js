@@ -96,19 +96,19 @@ module.exports = function(){
 	this.areAppArgumentsValid = function(Port, MaxSimultaneousComputation, AllowAllAccessControlOrigins, MaxSentRouteToClient){
 		try{
 			if(!Number.isInteger(Port)){
-				winston.error(`Port number must be an integer. Got ${Port}.`);
+				winston.error(`Port must be an integer. Got ${Port}.`);
 				return false;
 			}
 			if(!Number.isInteger(MaxSimultaneousComputation)){
-				winston.error(`MaxSimultaneousComputation number must be an integer. Got ${MaxSimultaneousComputation}.`);
+				winston.error(`MaxSimultaneousComputation must be an integer. Got ${MaxSimultaneousComputation}.`);
 				return false;
 			}
 			if(typeof AllowAllAccessControlOrigins != "boolean"){
-				winston.error(`AllowAllAccessControlOrigins switch must be a boolean. Got ${AllowAllAccessControlOrigins}.`);
+				winston.error(`AllowAllAccessControlOrigins must be a boolean. Got ${AllowAllAccessControlOrigins}.`);
 				return false;
 			}
-			if(typeof AllowAllAccessControlOrigins != "boolean"){
-				winston.error(`AllowAllAccessControlOrigins switch must be a boolean. Got ${AllowAllAccessControlOrigins}.`);
+			if(!Number.isInteger(MaxSentRouteToClient)){
+				winston.error(`MaxSentRouteToClient must be an integer. Got ${MaxSentRouteToClient}.`);
 				return false;
 			}
 
