@@ -68,4 +68,4 @@ Once dependencies are resolved, you can launch one of the few project `npm comma
 
 ## Todo
 
-- Maybe cleanup the express main route, if it were to be extended.
+- Charge testing
