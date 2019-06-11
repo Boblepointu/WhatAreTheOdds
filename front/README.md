@@ -34,33 +34,24 @@ Once dependencies are resolved, you can launch one of the few project `npm comma
   - `yarn run build` => Build the app to `dist` folder.
   - `yarn run build --report` => Build the app to `dist` folder and generate a `bundle analyzer report`.
 
-## Requirements
+## Configuration
 
-To work in dev mode, you must set the `forced` variable line 143 into `./src/App.vue` to point to your backend.
-To build for production, you must set the `forced` variable line 143 into `./src/App.vue` to empty string.
+You can edit the `./src/config.json` file to change a few settings.
+
+#### DevMode 
+  - Config file entry : "DevMode"
+  - Example value : true
+  - Description : Activate the dev mode. Request will be forced to the url set in `DevModeServerUrl` config entry.
+
+#### DevModeServerUrl
+  - Config file entry : "DevModeServerUrl"
+  - Example value : "http://127.0.0.1:3000"
+  - Description : Server url where the request will be sent when `DevMode` config entry is set to `true`.
 
 ## Todo
-
-- Add components, Bus, Store to make it more maintenable.
 - Add a way to manage all text strings in the app; after all, its C3PO, it should speak a lot of languages !
-- Add a way to toggle `dev`/`prod` mode without editing `./src/App.vue`.
 
 ## Credits
 
 The following boilerplate was used as a base => http://vuejs-templates.github.io/webpack/
-
-``` bash
-# install dependencies
-npm install
-
-# serve with hot reload at localhost:8080
-npm run dev
-
-# build for production with minification
-npm run build
-
-# build for production and view the bundle analyzer report
-npm run build --report
-```
-
 For a detailed explanation on how things work, check out the [guide](http://vuejs-templates.github.io/webpack/) and [docs for vue-loader](http://vuejs.github.io/vue-loader).
