@@ -103,8 +103,12 @@ module.exports = function(){
 				winston.error(`MaxSimultaneousComputation must be an integer. Got ${MaxSimultaneousComputation}.`);
 				return false;
 			}
-			if(typeof AllowAllAccessControlOrigins != "boolean"){
-				winston.error(`AllowAllAccessControlOrigins must be a boolean. Got ${AllowAllAccessControlOrigins}.`);
+			if(!Number.isInteger(AllowAllAccessControlOrigins)){
+				winston.error(`AllowAllAccessControlOrigins must be an integer (0 or 1). Got ${AllowAllAccessControlOrigins}.`);
+				return false;
+			}
+			if(AllowAllAccessControlOrigins != 0 && AllowAllAccessControlOrigins != 1){
+				winston.error(`AllowAllAccessControlOrigins must be an integer (0 or 1). Got ${AllowAllAccessControlOrigins}.`);
 				return false;
 			}
 			if(!Number.isInteger(MaxSentRouteToClient)){

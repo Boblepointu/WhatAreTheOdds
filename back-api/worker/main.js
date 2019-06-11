@@ -7,12 +7,12 @@ const PathFinder = require('./classes/PathFinder.js');
 const Toolbox = new (require('./classes/Toolbox.js'))();
 const Config = require('./config.json');
 
-const HeapSizeLevel1 = process.env.HEAP_SIZE_LEVEL_1 || Config.HeapSizeLevel1 || 10;
-const HeapSizeLevel2 = process.env.HEAP_SIZE_LEVEL_2 || Config.HeapSizeLevel2 || 10;
-const Depth = process.env.DEPTH || Config.Depth || 50;
+const HeapSizeLevel1 = (parseInt(process.env.HEAP_SIZE_LEVEL_1, 10) || process.env.HEAP_SIZE_LEVEL_1) || Config.HeapSizeLevel1 || 10;
+const HeapSizeLevel2 = (parseInt(process.env.HEAP_SIZE_LEVEL_2, 10) || process.env.HEAP_SIZE_LEVEL_2) || Config.HeapSizeLevel2 || 10;
+const Depth = (parseInt(process.env.DEPTH, 10) || process.env.DEPTH) || Config.Depth || 50;
 const MFalconConfigPath = process.env.MFALCON_CONFIG_PATH || Config.MFalconConfigPath || './dataset/live/millenium-falcon.json';
-const HardTimeoutSec = process.env.HARD_TIMEOUT_SEC || Config.HardTimeoutSec || 60;
-const SoftTimeoutSec = process.env.SOFT_TIMEOUT_SEC || Config.SoftTimeoutSec || 30;
+const HardTimeoutSec = (parseInt(process.env.HARD_TIMEOUT_SEC, 10) || process.env.HARD_TIMEOUT_SEC) || Config.HardTimeoutSec || 60;
+const SoftTimeoutSec = (parseInt(process.env.SOFT_TIMEOUT_SEC, 10) || process.env.SOFT_TIMEOUT_SEC) || Config.SoftTimeoutSec || 30;
 const IsApiCall = (process.argv[2]) ? true : false;
 
 const main = async function(){

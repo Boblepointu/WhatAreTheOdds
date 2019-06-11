@@ -6,10 +6,13 @@ const Toolbox = new (require('./classes/Toolbox.js'))();
 const Logger = require('./classes/Logger.js');
 const Config = require('./config.json');
 
-const Port = process.env.PORT || Config.Port || 3000;
-const MaxSimultaneousComputation = process.env.MAX_SIMULTANEOUS_COMPUTATION || Config.MaxSimultaneousComputation || 10;
-const AllowAllAccessControlOrigins = process.env.ALLOW_ALL_ACCESS_CONTROL_ORIGIN || Config.AllowAllAccessControlOrigins || false;
-const MaxSentRouteToClient = process.env.MAX_SENT_ROUTE_TO_CLIENT || Config.MaxSentRouteToClient || 10;
+const Port = (parseInt(process.env.PORT, 10) || process.env.PORT) || Config.Port || 3000;
+const MaxSimultaneousComputation = (parseInt(process.env.MAX_SIMULTANEOUS_COMPUTATION, 10) || process.env.MAX_SIMULTANEOUS_COMPUTATION) 
+																		|| Config.MaxSimultaneousComputation || 10;
+const AllowAllAccessControlOrigins = (parseInt(process.env.ALLOW_ALL_ACCESS_CONTROL_ORIGIN, 10) || process.env.ALLOW_ALL_ACCESS_CONTROL_ORIGIN) 
+																		|| Config.AllowAllAccessControlOrigins || false;
+const MaxSentRouteToClient = (parseInt(process.env.MAX_SENT_ROUTE_TO_CLIENT, 10) || process.env.MAX_SENT_ROUTE_TO_CLIENT)
+																		|| Config.MaxSentRouteToClient || 10;
 
 if(Cluster.isMaster){
 	const winston = new Logger('MasterNode');

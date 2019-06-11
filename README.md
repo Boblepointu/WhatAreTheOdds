@@ -115,7 +115,7 @@ You can also hard set these variables into corresponding `config.json` files.
 #### AllowAllAccessControlOrigins
   - Config file entry : "AllowAllAccessControlOrigins"
   - Environment variable : ALLOW_ALL_ACCESS_CONTROL_ORIGIN
-  - Example value : true
+  - Example value : 0
   - Description : Allow cross origin requests; useful for development; could generate a risk for production.
 
 #### MaxSentRouteToClient

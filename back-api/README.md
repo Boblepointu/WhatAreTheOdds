@@ -52,7 +52,7 @@ Please note that if the config file entry is missing and no environment variable
 #### AllowAllAccessControlOrigins
   - Config file entry : "AllowAllAccessControlOrigins"
   - Environment variable : ALLOW_ALL_ACCESS_CONTROL_ORIGIN
-  - Example value : true
+  - Example value : 0
   - Description : Allow cross origin requests; useful for development; could generate a risk for production.
 
 #### MaxSentRouteToClient
