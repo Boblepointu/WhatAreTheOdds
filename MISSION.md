@@ -1,5 +1,5 @@
 
-# What are the odds? (Dataiku developer challenge)
+# What are the odds?
 
 ## [A long time ago in a galaxy far, far away...](https://starwarsintrocreator.kassellabs.io/?ref=redirect#!/BLOF1WUcqAU6USUYMZ_W)
 
@@ -186,6 +186,7 @@ The application should display 81% as The Millenium Falcon can go from Tatooine 
 #### Example 3
 
 [universe.db](_readme_assets/data/example_3/universe.db)
+
 `same as above`
 
 [millenium-falcon.json](_readme_assets/data/example_3/millenium-falcon.json)
