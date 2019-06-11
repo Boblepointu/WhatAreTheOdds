@@ -9,16 +9,15 @@ const Config = require('./config.json');
 const HeapSizeLevel1 = process.env.HEAP_SIZE_LEVEL_1 || Config.HeapSizeLevel1 || 10;
 const HeapSizeLevel2 = process.env.HEAP_SIZE_LEVEL_2 || Config.HeapSizeLevel2 || 10;
 const Depth = process.env.DEPTH || Config.Depth || 50;
-const DataSetName = process.env.DATASET || Config.DataSet || 'live';
+const MFalconConfigPath = process.env.MFALCON_CONFIG_PATH || Config.MFalconConfigPath || './dataset/live/millenium-falcon.json';
 const HardTimeoutSec = process.env.HARD_TIMEOUT_SEC || Config.HardTimeoutSec || 60;
 const SoftTimeoutSec = process.env.SOFT_TIMEOUT_SEC || Config.SoftTimeoutSec || 30;
 
-const GetData = async function(testEntry){
-	var mainPath = `./dataset/${testEntry}/`;
+const GetData = async function(mainPath){
+	var mFalcon = require(mainPath);
 	return {
-		MFalcon: require(`${mainPath}millenium-falcon.json`),
-		Empire: require(`${mainPath}empire.json`),
-		Universe: await (new DbReader()).readRouteEntries(`${mainPath}universe.db`)
+		MFalcon: mFalcon,
+		Universe: await (new DbReader()).readRouteEntries(mFalcon.routes_db)
 	}
 }
 
@@ -31,12 +30,18 @@ const Sleep = function(ms){
 const main = async function(){
 	var winston = Logger(`Main`);
 	try{
-		winston.log(`Retrieving dataset '${DataSetName}'`);
-		var DataSet = await GetData(DataSetName);
+		winston.log(`Retrieving dataset '${MFalconConfigPath}'`);
+		var DataSet = await GetData(MFalconConfigPath);
 		var MFalcon = DataSet.MFalcon;
-		var Empire = DataSet.Empire;
 		var Universe = DataSet.Universe;
+		var Empire;
+
 		if(!process.argv[2]){
+			var empireConfigPath = MFalconConfigPath.split('/');
+			delete empireConfigPath[empireConfigPath.length-1];
+			empireConfigPath = `${empireConfigPath.join('/')}/empire.json`;
+
+			Empire = require(empireConfigPath);
 			var graph = await BuildGraph(Universe, Empire.bounty_hunters);
 			winston.log(`We were inited from the command line.`);
 			var pathFinder = new PathFinder(MFalcon, Empire, graph, HeapSizeLevel1, HeapSizeLevel2, Depth, SoftTimeoutSec);
@@ -50,7 +55,6 @@ const main = async function(){
 			}, HardTimeoutSec*1000);
 
 			winston.log(`We were inited from the back api.`);
-			Empire = undefined;
 			process.on('message', empireIntel => { Empire = empireIntel; });
 			process.send('ready');
 

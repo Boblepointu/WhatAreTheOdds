@@ -2,7 +2,7 @@
 	"HeapSizeLevel1": 100
 	, "HeapSizeLevel2": 30
 	, "Depth": 200
-	, "DataSet": "live"
+	, "MFalconConfigPath": "./dataset/live/millenium-falcon.json"
 	, "HardTimeoutSec": 60
 	, "SoftTimeoutSec": 30
 	, "LogLevel": 3
