@@ -63,3 +63,95 @@ The app is composed of three block :
 - The WORKER : Do all the heavy lifting to find a way around this hostile universe. [see readme](./back-worker/README.md).
 - The C3PO : The frontend application. You talk to it, it find a way to get it right ! [see readme](./front/README.md).
 
+## Configuration
+
+You can configure the app as wished by setting a few environment variables.
+You can also hard set these variables into corresponding `config.json` files.
+
+### Api configuration
+
+#### MaxSimultaneousComputation 
+  - Config file entry : "MaxSimultaneousComputation"
+  - Environment variable : MAX_SIMULTANEOUS_COMPUTATION
+  - Example value : 10
+  - Description : Set the maximum workers that will be working concurently.
+
+#### Port
+  - Config file entry : "Port"
+  - Environment variable : PORT
+  - Example value : 3000
+  - Description : Http port to listen for incoming connections.
+
+#### AllowAllAccessControlOrigins
+  - Config file entry : "AllowAllAccessControlOrigins"
+  - Environment variable : ALLOW_ALL_ACCESS_CONTROL_ORIGIN
+  - Example value : true
+  - Description : Allow cross origin requests; useful for development; could generate a risk for production.
+
+#### MaxSentRouteToClient
+  - Config file entry : "MaxSentRouteToClient"
+  - Environment variable : MAX_SENT_ROUTE_TO_CLIENT
+  - Example value : 50
+  - Description : How many computed routes will we display front side ?
+
+### Worker configuration
+
+#### HeapSizeLevel1 
+  - Config file entry : "HeapSizeLevel1"
+  - Environment variable : HEAP_SIZE_LEVEL_1
+  - Example value : 100
+  - Description : Heap size when traversing the graph to find a complete path. An heapsize of 100 give good results with moderately big graphs.
+
+#### HeapSizeLevel2
+  - Config file entry : "HeapSizeLevel2"
+  - Environment variable : HEAP_SIZE_LEVEL_2
+  - Example value : 30
+  - Description : Heap size when trying to improve found pathes. An heapsize of 30 give good results with moderately complexe bounty hunter strategies.
+
+#### Depth
+  - Config file entry : "Depth"
+  - Environment variable : DEPTH
+  - Example value : 200
+  - Description : Depth we will dive to search for a solution. 
+      - On level 1 (graph traversal), will quit searching when no solution is found within this limit (warn => will limit graph traversal capabilities. Set this value to the length of the longest route !).
+      - On level 2 (bounty hunters dodging), will quit when no better solution is found within this limit.
+
+#### MFalconConfigPath
+  - Config file entry : "MFalconConfigPath"
+  - Environment variable : MFALCON_CONFIG_PATH
+  - Example value : "./dataset/live/millenium-falcon.json"
+  - Description : Path of the `millenium-falcon.json` file.
+
+#### HardTimeoutSec
+  - Config file entry : "HardTimeoutSec"
+  - Environment variable : HARD_TIMEOUT_SEC
+  - Example value : 60
+  - Description : Will forcibly quit when this timeout is clocked. No results will be output. Web browsers http timeout are usually around 60 seconds.
+
+#### SoftTimeoutSec
+  - Config file entry : "SoftTimeoutSec"
+  - Environment variable : SOFT_TIMEOUT_SEC
+  - Example value : 30
+  - Description : Will gracefully quit when this timeout is clocked. Best results found will be outputed.
+
+#### LogLevel
+  - Config file entry : "LogLevel"
+  - Environment variable : LOG_LEVEL
+  - Example value : 3
+  - Description : Given the nature of the app, loglevels must be managed to prevent output cluttering. Each level added will activate one 'functional' deeper. LogLevel 3 is advised; LogLevel 4 and 5 output way too much data.
+
+  
+  
+## Docker usage examples
+
+### Pass a custom `millenium-falcon.json` file
+
+```bash
+docker run -p 3000:3000 -v /home/millenium-falcon.json:/app/back-api/worker/dataset/live/millenium-falcon.json whataretheodds:latest
+```
+
+### Pass a custom `millenium-falcon.json` file and a custom `universe.db` file
+
+```bash
+docker run -p 3000:3000 -v /home/millenium-falcon.json:/app/back-api/worker/dataset/live/millenium-falcon.json -v /home/universe.db:/app/back-api/worker/dataset/live/universe.db whataretheodds:latest
+```
