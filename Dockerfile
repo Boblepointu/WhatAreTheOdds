@@ -12,10 +12,8 @@ ADD build.sh /app/
 
 WORKDIR /app
 
-RUN ls -la
-
-
 RUN bash build.sh
 
 WORKDIR /app/back-api/
+
 CMD ["yarn", "run", "start"]
