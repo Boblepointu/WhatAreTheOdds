@@ -203,8 +203,7 @@ const main = async function(){
 			}, 5000);
 
 			winston.log(`Waiting for the client empire intel.`);
-			while(!Empire)
-				await Sleep(50);
+			while(!Empire) await Sleep(50);
 			clearTimeout(timeoutHandle);
 
 			if(!AreInputValids(Empire, MFalcon, Universe)){

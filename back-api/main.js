@@ -27,7 +27,7 @@ if(Cluster.isMaster){
 	const Config = require('./config.json');
 	const express = require('express');
 	const bodyParser = require('body-parser');
-	const { spawn } = require('child_process');
+	const Worker = require('./classes/Worker.js');
 	
 	const port = process.env.PORT || Config.Port || 3000;
 	const maxSimultaneousComputation = process.env.MAX_SIMULTANEOUS_COMPUTATION || Config.MaxSimultaneousComputation || 10;
@@ -161,45 +161,31 @@ if(Cluster.isMaster){
 			}
 
 			winston.log(`Sanitizing input parameters.`);
-			var input = sanitizeComputeInput(req, res);
+			var Empire = sanitizeComputeInput(req, res);
 			winston.log(`Given input parameters are valids.`);
 
-			var cwd = `${__dirname}/worker/`;
-			var responseSent = false;
-			winston.log(`Spawning worker thread into (${cwd})`);
-			var child = spawn('node', ['main.js', 'CALLFROMAPI'], { cwd: cwd, stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ] });
-
-			winston.log(`Incrementing spawn count on cluster master.`);
+			var worker = new Worker();
+			await worker.spawn(Empire);
+		
 			process.send('newSpawn');
 
-			winston.log(`Binding event listeners to worker process.`);
-			child.stdout.on('data', function(data){ console.log(data.toString()); });
-			child.stderr.on('data', function(data){ console.log(data.toString()); });
-			child.on('close', code => { 
-				winston.log(`Child process exited. Freeing slot !`); 
+			var onError = err => {
+				winston.error('Worker died prematurily.');
+				res.status(500);
+				res.end(err);
+				worker.removeListener('error', onError);
+				worker.removeListener('done', onDone);
 				process.send('newDeath');
-				if(!responseSent){
-					winston.error(`Child process died before sending a response to our client. Something is wrong. Closing http request.`);
-					res.status(500);
-					res.end('Worker process died unexpectedly. Contact admins and say them the HeapSize is too high !');
-					responseSent = true;					
-				}
-
-			});
-			child.on('message', function(data){
-				var stringed = data.toString();
-				if(stringed == 'ready'){
-					winston.log(`Child is ready to compute ! Sending empire intel.`);
-					child.send(input);
-				}else{
-					winston.log(`Got a computation result ! Found ${data.length} routes to make it safely !`);
-					winston.log(`Sending the ${MaxSentRouteToClient} best routes.`);
-					if(!responseSent)
-						res.send(JSON.stringify(data.slice(0, MaxSentRouteToClient)));
-					responseSent = true;
-					child.kill();
-				}
-			});
+			};
+			var onDone = routes => { 
+				winston.log(`Sending the ${MaxSentRouteToClient} best routes.`);
+				res.end(JSON.stringify(routes.slice(0, MaxSentRouteToClient)));
+				worker.removeListener('error', onError);
+				worker.removeListener('done', onDone);	
+				process.send('newDeath');
+			};
+			worker.on('error', onError);
+			worker.on('done', onDone);
 		}catch(err){
 			winston.log(err);
 			res.status(500);
