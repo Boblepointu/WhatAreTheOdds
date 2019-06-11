@@ -160,9 +160,6 @@ if(Cluster.isMaster){
 				return;
 			}
 
-			winston.log(`Incrementing spawn count on cluster master.`);
-			process.send('newSpawn');
-
 			winston.log(`Sanitizing input parameters.`);
 			var input = sanitizeComputeInput(req, res);
 			winston.log(`Given input parameters are valids.`);
@@ -171,6 +168,9 @@ if(Cluster.isMaster){
 			var responseSent = false;
 			winston.log(`Spawning worker thread into (${cwd})`);
 			var child = spawn('node', ['main.js', 'CALLFROMAPI'], { cwd: cwd, stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ] });
+
+			winston.log(`Incrementing spawn count on cluster master.`);
+			process.send('newSpawn');
 
 			winston.log(`Binding event listeners to worker process.`);
 			child.stdout.on('data', function(data){ console.log(data.toString()); });
