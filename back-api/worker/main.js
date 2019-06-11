@@ -13,8 +13,27 @@ const MFalconConfigPath = process.env.MFALCON_CONFIG_PATH || Config.MFalconConfi
 const HardTimeoutSec = process.env.HARD_TIMEOUT_SEC || Config.HardTimeoutSec || 60;
 const SoftTimeoutSec = process.env.SOFT_TIMEOUT_SEC || Config.SoftTimeoutSec || 30;
 
-const AreInputValids = function(Empire, MFalcon){
+const AreInputValids = function(Empire, MFalcon, Universe){
 	var winston = Logger(`SanitizeInputs`);
+	if(!Universe){
+		winston.error('No Universe parameters given !');
+		return false;
+	}
+	for(var i in Universe){
+		if(!Universe[i].origin){
+			winston.error('No origin column in universe db !');
+			return false;
+		}
+		if(!Universe[i].destination){
+			winston.error('No destination column in universe db !');
+			return false;
+		}
+		if(!Universe[i].travel_time){
+			winston.error('No travel_time column in universe db !');
+			return false;
+		}
+	}
+
 	if(!MFalcon){
 		winston.error('No MFalcon parameters given !');
 		return false;		
@@ -133,8 +152,8 @@ const main = async function(){
 
 			Empire = require(empireConfigPath);
 
-			if(!AreInputValids(Empire, MFalcon)){
-				winston.error('FATAL => Your input (empire || millenium-falcon) json are invalid ! Stopping here.');
+			if(!AreInputValids(Empire, MFalcon, Universe)){
+				winston.error('FATAL => Your input (empire || millenium-falcon || universe) json are invalid ! Stopping here.');
 				process.exit();
 			}
 
@@ -164,8 +183,8 @@ const main = async function(){
 				await Sleep(50);
 			clearTimeout(timeoutHandle);
 
-			if(!AreInputValids(Empire, MFalcon)){
-				winston.error('FATAL => Your input (empire || millenium-falcon) json are invalid ! Stopping here.');
+			if(!AreInputValids(Empire, MFalcon, Universe)){
+				winston.error('FATAL => Your input (empire || millenium-falcon || universe) json are invalid ! Stopping here.');
 				process.exit();
 			}
 
