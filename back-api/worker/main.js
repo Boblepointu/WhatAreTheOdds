@@ -13,6 +13,96 @@ const MFalconConfigPath = process.env.MFALCON_CONFIG_PATH || Config.MFalconConfi
 const HardTimeoutSec = process.env.HARD_TIMEOUT_SEC || Config.HardTimeoutSec || 60;
 const SoftTimeoutSec = process.env.SOFT_TIMEOUT_SEC || Config.SoftTimeoutSec || 30;
 
+const AreInputValids = function(Empire, MFalcon){
+	var winston = Logger(`SanitizeInputs`);
+	if(!MFalcon){
+		winston.error('No MFalcon parameters given !');
+		return false;		
+	}
+
+	if(!MFalcon.departure){
+		winston.error('No departure entry in MFalcon data !');
+		return false;		
+	}	
+
+	if(!MFalcon.arrival){
+		winston.error('No arrival entry in MFalcon data !');
+		return false;		
+	}
+
+	if(!MFalcon.routes_db){
+		winston.error('No routes_db entry in MFalcon data !');
+		return false;		
+	}
+
+	if(!MFalcon.autonomy){
+		winston.error('No autonomy entry in MFalcon data !');
+		return false;		
+	}
+
+	if(!Empire){
+		winston.error('No Empire intel given !');
+		return false;
+	}
+	if(!Empire.countdown){
+		winston.error('To compute, we need data about the empire countdown.');
+		return false;
+	}
+	if(Empire.countdown){
+		try{ parseInt(Empire.countdown); }
+		catch(err){
+			winston.error('The given countdown isn\'t an integer !');
+			return false;
+		}
+	}
+	if(!Empire.bounty_hunters){
+		winston.error('Bounty hunters intel is necessary, even as an empty array.');
+		return false;
+	}
+	if(Empire.bounty_hunters){
+		if(!Array.isArray(Empire.bounty_hunters)){
+			winston.error('Bounty hunters intel is not presented as an array.');
+			return false;
+		}
+		for(var i in Empire.bounty_hunters){
+			if(!Empire.bounty_hunters[i].planet){
+				winston.error('Every bounty hunters intel need a planet.');
+				return false;
+			}
+			if(typeof Empire.bounty_hunters[i].planet != "string"){
+				winston.error('All bounty hunter planet arguments must be a string !');
+				return false;
+			}
+			if(!Number.isInteger(Empire.bounty_hunters[i].day)){
+				winston.error('All bounty hunter day arguments must be an integer !');
+				return false;
+			}				
+			if(!Empire.bounty_hunters[i].day && Empire.bounty_hunters[i].day != 0){
+				winston.error('Every bounty hunters intel need a day.');
+				return false;
+			}
+			try{ parseInt(Empire.bounty_hunters[i].day); }
+			catch(err){
+				winston.error('The day parameter of every bounty hunters intel must be given as an int.');
+				return false;
+			}
+			if(Empire.bounty_hunters[i].day < 0){
+				winston.error('The day parameter of every bounty hunters intel must be positive.');
+				return false;
+			}			
+			if(typeof Empire.bounty_hunters[i].planet != "string"){
+				winston.error('The planet parameter of every bounty hunters intel must be given as a string.');
+				return false;
+			}
+			if(Empire.bounty_hunters[i].planet.length == 0){
+				winston.error('The planet parameter of every bounty hunters intel must have more than 0 character.');
+				return false;
+			}			
+		}
+	}
+	return true;
+}
+
 const GetData = async function(mainPath){
 	var mFalcon = require(mainPath);
 	return {
@@ -42,6 +132,12 @@ const main = async function(){
 			empireConfigPath = `${empireConfigPath.join('/')}/empire.json`;
 
 			Empire = require(empireConfigPath);
+
+			if(!AreInputValids(Empire, MFalcon)){
+				winston.error('FATAL => Your input (empire || millenium-falcon) json are invalid ! Stopping here.');
+				process.exit();
+			}
+
 			var graph = await BuildGraph(Universe, Empire.bounty_hunters);
 			winston.log(`We were inited from the command line.`);
 			var pathFinder = new PathFinder(MFalcon, Empire, graph, HeapSizeLevel1, HeapSizeLevel2, Depth, SoftTimeoutSec);
@@ -67,6 +163,12 @@ const main = async function(){
 			while(!Empire)
 				await Sleep(50);
 			clearTimeout(timeoutHandle);
+
+			if(!AreInputValids(Empire, MFalcon)){
+				winston.error('FATAL => Your input (empire || millenium-falcon) json are invalid ! Stopping here.');
+				process.exit();
+			}
+
 			winston.log(`Got empire data ! Ready to ruuuuumble !`);
 
 			var graph = await BuildGraph(Universe, Empire.bounty_hunters);
@@ -87,6 +189,3 @@ const main = async function(){
 }
 
 main();
-
-//for(var i = 0; i < 100; i++)
-//	console.log('{ "planet" : "Endor", "day" : '+i+' },')
