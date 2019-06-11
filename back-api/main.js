@@ -3,7 +3,6 @@
 const Cluster = require("cluster");
 const Os = require("os");
 const Logger = require('./classes/Logger.js');
-const Config = require('./config.json');
 
 if(Cluster.isMaster){
 	const winston = new Logger('MasterNode-BackAPI');
@@ -25,6 +24,7 @@ if(Cluster.isMaster){
 
 	Cluster.on("exit", (worker, code, signal) => { winston.warn(`Worker ${worker.process.pid} died.`); });
 }else{
+	const Config = require('./config.json');
 	const express = require('express');
 	const bodyParser = require('body-parser');
 	const { spawn } = require('child_process');
@@ -82,6 +82,16 @@ if(Cluster.isMaster){
 					res.end('Every bounty hunters intel need a planet.');
 					return false;
 				}
+				if(typeof req.body.data.bounty_hunters[i].planet != "string"){
+					res.status(400);
+					res.end('All bounty hunter planet arguments must be a string !');
+					return false;
+				}
+				if(!Number.isInteger(req.body.data.bounty_hunters[i].day)){
+					res.status(400);
+					res.end('All bounty hunter day arguments must be an integer !');
+					return false;
+				}				
 				if(!req.body.data.bounty_hunters[i].day && req.body.data.bounty_hunters[i].day != 0){
 					res.status(400);
 					res.end('Every bounty hunters intel need a day.');
