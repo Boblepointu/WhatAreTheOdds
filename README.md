@@ -98,7 +98,7 @@ Note : You can place the `universe.db` wherever you want, as long as its path is
 You can configure the app as wished by setting a few environment variables.
 You can also hard set these variables into corresponding `config.json` files.
 
-### Api configuration
+### Api configuration ([./back-api/config.json](./back-api/config.json))
 
 #### MaxSimultaneousComputation 
   - Config file entry : "MaxSimultaneousComputation"
@@ -124,7 +124,7 @@ You can also hard set these variables into corresponding `config.json` files.
   - Example value : 50
   - Description : How many computed routes will we display front side ?
 
-### Worker configuration
+### Worker configuration ([./back-worker/config.json](./back-worker/config.json))
 
 #### HeapSizeLevel1 
   - Config file entry : "HeapSizeLevel1"
