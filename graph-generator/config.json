@@ -1,0 +1,10 @@
+{
+	"NbPlanetInUniverse": 100000
+	, "MinRouteAvailable": 1
+	, "MaxLinksDistance": 20
+	, "MaxLinksPerPlanet": 400
+	, "MinLinksPerPlanet": 100
+	, "MinRouteLength": 1000
+	, "StartPlanetName": "Tatooine"
+	, "EndPlanetName": "Endor"
+}

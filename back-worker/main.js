@@ -1,6 +1,5 @@
 "use strict";
 
-
 const BuildGraph = require('./classes/GraphBuilder.js');
 const Logger = require('./classes/Logger.js');
 const PathFinder = require('./classes/PathFinder.js');

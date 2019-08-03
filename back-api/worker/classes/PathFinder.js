@@ -20,8 +20,8 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 			for(var day in timeToPosition);
 			route.travelTime = parseInt(day);
 			
-			route.identifier = pathFinderToolBox.generateRouteIdentifier(route, timeToPosition);
-			route.liteIdentifier = pathFinderToolBox.generateRouteIdentifier(route, timeToPosition, true);
+			//route.identifier = pathFinderToolBox.generateRouteIdentifier(route, timeToPosition);
+			//route.liteIdentifier = pathFinderToolBox.generateRouteIdentifier(route, timeToPosition, true);
 			route.travelable = pathFinderToolBox.isRouteTravelable(route);
 			route.timeToPosition = timeToPosition;
 			route.riskMap = riskMap;
@@ -309,6 +309,8 @@ module.exports = function(MFalcon, Empire, Graph, HeapSizeLevel1, HeapSizeLevel2
 				lWinston.error(`No route are traversable with given parameters.`);
 				return level1RouteArray;
 			}
+
+			return level1RouteArray;
 
 			lWinston.log(`Computing level 2, finding out best pauses to make.`);
 			var level2RouteArray = computeLevel2(level1RouteArray);

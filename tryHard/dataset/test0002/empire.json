@@ -1,0 +1,41 @@
+{
+  "countdown": 15,
+  "bounty_hunters": [
+    {
+      "planet": "P0",
+      "day": 2
+    },
+    {
+      "planet": "P3",
+      "day": 15
+    },
+    {
+      "planet": "P2",
+      "day": 11
+    },
+    {
+      "planet": "P1",
+      "day": 3
+    },
+    {
+      "planet": "P2",
+      "day": 15
+    },
+    {
+      "planet": "P1",
+      "day": 7
+    },
+    {
+      "planet": "P0",
+      "day": 14
+    },
+    {
+      "planet": "P0",
+      "day": 1
+    },
+    {
+      "planet": "P0",
+      "day": 15
+    }
+  ]
+}
