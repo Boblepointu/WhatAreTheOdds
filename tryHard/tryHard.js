@@ -16,9 +16,9 @@ var main = async function(){
 
 	await pathFinder.buildGraph();
 	var routesFound = await pathFinder.findIndivisibleRoutes();
-	console.log(`${Object.keys(routesFound).length}`)
+	//console.log(`${Object.keys(routesFound).length}`)
 	
-	await pathFinder.prepareDodgeGraphs(dataSet.Empire);
+	await pathFinder.computeOptimalWaypoints(dataSet.Empire, Object.values(routesFound)[2]);
 
 	//await pathFinder.findIndivisibleRoutesVariation(2);
 

@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "Set": "^0.4.1",
+    "a-star": "^0.2.0",
     "csr-matrix": "^2.0.0",
     "dict": "^1.4.0",
     "heap": "^0.2.6",
