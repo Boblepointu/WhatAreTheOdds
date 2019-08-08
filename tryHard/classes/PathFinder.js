@@ -130,8 +130,68 @@ module.exports = function(Db, MFalcon){
 		var winston = new Logger('PathFinder->computeOptimalWaypoints', 4);
 		return new Promise((resolve, reject) => {
 			try{
-				var aStar = require('a-star');
-				var bountyHunters = Object.values(Empire.bounty_hunters).filter(bh => route.indexOf(bh.planet) != -1);
+
+				var generateBhHashMap = Empire => {
+					var tempBh = Object.values(Empire.bounty_hunters).filter(bh => route.indexOf(bh.planet) != -1);
+					var bountyHunters = {};
+					for(var i = 0; i < tempBh.length; i++){
+						if(!bountyHunters[tempBh[i].planet])
+							bountyHunters[tempBh[i].planet] = [];
+						bountyHunters[tempBh[i].planet][tempBh[i].day] = true;
+					}
+					return bountyHunters;
+				}
+
+				var computeMinimumTravelTimeFrom = (route, from) => {
+					var routeTravelTime = 0;
+					var mFalconFuel = MFalcon.autonomy;
+
+					for(var i = route.indexOf(from); i < route.length; i++){
+						let currPlanet = route[i];
+						let nextPlanet = route[i+1];
+						// If we got no next planet; we have finished link management.
+						if(!nextPlanet) break;
+
+						// Manage the fuel variable. If fuel needed to travel this link; refuel and add 1 to travel time.
+						if(mFalconFuel == 0 || linksMap[currPlanet][nextPlanet].distance > mFalconFuel){
+							routeTravelTime++;
+							mFalconFuel = MFalcon.autonomy;
+						}
+
+						// Remove used fuel and add travel time of link.
+						routeTravelTime += linksMap[currPlanet][nextPlanet].distance;
+						mFalconFuel -= linksMap[currPlanet][nextPlanet].distance;
+					}
+					//console.log("routeTravelTime", routeTravelTime);
+					return routeTravelTime;
+				}
+				
+
+				return;
+
+				var computeMinimumTravelTimeFrom = (route, from) => {
+					var routeTravelTime = 0;
+					var mFalconFuel = MFalcon.autonomy;
+
+					for(var i = route.indexOf(from); i < route.length; i++){
+						let currPlanet = route[i];
+						let nextPlanet = route[i+1];
+						// If we got no next planet; we have finished link management.
+						if(!nextPlanet) break;
+
+						// Manage the fuel variable. If fuel needed to travel this link; refuel and add 1 to travel time.
+						if(mFalconFuel == 0 || linksMap[currPlanet][nextPlanet].distance > mFalconFuel){
+							routeTravelTime++;
+							mFalconFuel = MFalcon.autonomy;
+						}
+
+						// Remove used fuel and add travel time of link.
+						routeTravelTime += linksMap[currPlanet][nextPlanet].distance;
+						mFalconFuel -= linksMap[currPlanet][nextPlanet].distance;
+					}
+					//console.log("routeTravelTime", routeTravelTime);
+					return routeTravelTime;
+				}
 
 				var hitCountIncrement = (planet, day, contiguous) => {
 					var hitCount = 0;
@@ -145,6 +205,57 @@ module.exports = function(Db, MFalcon){
 					}
 					return hitCount;
 				}
+
+				// Checking if route is suitable to save planet. If minimal time to arrival is > countdown; discard here.
+				var routeMinimumTravelTime = computeMinimumTravelTimeFrom(route, MFalcon.departure);
+
+				if(routeMinimumTravelTime > Empire.countdown){
+					winston.warn(`The route ${route.join('->')} isn't suitable to save ${MFalcon.arrival} from destruction. Empire countdown is ${Empire.countdown} and minimum travel time is ${routeMinimumTravelTime}.`);
+					resolve(false);
+					return;
+				}
+
+				var baseMap = [];
+
+				for(var i = 0; i < route.length; i++){
+					var node = {
+						type: "passingBy"
+						, planet: route[i]
+						, duration: (route[i] == MFalcon.departure) ? 0 : linksMap[route[i-1]][route[i]].distance
+						, travelTime: (route[i] == MFalcon.departure) ? 0 : baseMap[baseMap.length-1].travelTime + linksMap[route[i-1]][route[i]].distance
+					};
+					node.hitCount = (hitCountIncrement(node.planet, node.travelTime, 0)) + ((baseMap[baseMap.length-1]) ? baseMap[baseMap.length-1].hitCount : 0);
+					baseMap.push(node);
+				}
+
+				var wFuelMap = [];
+				var remainingFuel = MFalcon.autonomy;
+				for(var i = 0; i < baseMap.length; i++){
+					wFuelMap.push(baseMap[i]);
+					if(wFuelMap[wFuelMap.length-2] && wFuelMap[wFuelMap.length-2].type == "refueling") 
+						wFuelMap[wFuelMap.length-1].travelTime++;
+					remainingFuel -= baseMap[i].travelTime;
+					if(baseMap[i+1] && baseMap[i+1].duration > remainingFuel){
+						wFuelMap.push({
+							type: "refueling"
+							, planet: baseMap[i].planet
+							, duration: 1
+							, travelTime: baseMap[i].travelTime+1
+							, hitCount: (hitCountIncrement(baseMap[i].planet, node.travelTime+1, 0)) + baseMap[i].hitCount
+						});
+						remainingFuel = MFalcon.autonomy;
+					}
+				}
+
+				var minRefuelCount = 0;
+
+				console.log(wFuelMap);
+				return;
+
+				var aStar = require('a-star');
+				
+
+
 
 				var computeMinimumTravelTimeFrom = (route, from) => {
 					var routeTravelTime = 0;
@@ -196,7 +307,7 @@ module.exports = function(Db, MFalcon){
 								, steps: node.steps+1
 							});
 							return neighborList;
-						}else if(node.type != "waiting"){
+						}else{
 							neighborList.push({
 								type: "passingBy"
 								, planet: nextPlanet
@@ -208,9 +319,11 @@ module.exports = function(Db, MFalcon){
 							});
 						}
 
+						if(node.type == "waiting") return neighborList;
+
 						var availableWaitTimes = Empire.countdown - (node.travelTime + computeMinimumTravelTimeFrom(route, node.planet));
-						for(var i = 1; i < availableWaitTimes; i++){
-							neighborList.push({
+						for(var i = 1; i <= availableWaitTimes; i++){
+							var newNode = {
 								type: "waiting"
 								, planet: node.planet
 								, duration: i
@@ -218,13 +331,26 @@ module.exports = function(Db, MFalcon){
 								, travelTime: node.travelTime+i
 								, remainingFuel: MFalcon.autonomy
 								, steps: node.steps+1
-							});
-							if(i > Config.HardLimit) break;
+							};
+							if(newNode.hitCount > node.hitCount || i > Config.HardLimit) break;
+							neighborList.push(newNode);
+							//if(i > Config.HardLimit) break;
 						}
-
+						neighborList.sort((a, b) => {
+							return a.hitCount - b.hitCount;
+						});
+						/*console.log(neighborList[0]);
+						console.log(neighborList[1]);
+						console.log(neighborList[2]);
+						console.log(neighborList[3]);
+						console.log(neighborList[4]);
+						console.log(neighborList[5]);
+						console.log(neighborList[6]);
+						process.exit()*/
 						return neighborList;
 					}
 					, distance: (nodeA, nodeB) => {
+						//return 0;
 						if(nodeA.planet == nodeB.planet) return (nodeB.hitCount != nodeA.hitCount) ? Infinity : 0;
 						else return linksMap[nodeA.planet][nodeB.planet].distance;
 					}
