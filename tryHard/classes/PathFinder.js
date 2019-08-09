@@ -13,232 +13,283 @@ module.exports = function(Db, MFalcon){
 
 	this.buildGraph = () => {
 		var winston = Logger('PathFinder->buildGraph', 3);
-		return new Promise(async (resolve, reject) => {
-			try{
-				// Finding out how much entries we got in the provided database.
-				var totalEntries = (await Db.execRequest(`SELECT count(*) as cnt from routes`))[0].cnt;
-				winston.log(`There is ${totalEntries} links to discover in db.`);
+		try{
+			// Finding out how much entries we got in the provided database.
+			var totalEntries = (await Db.execRequest(`SELECT count(*) as cnt from routes`))[0].cnt;
+			winston.log(`There is ${totalEntries} links to discover in db.`);
 
-				// linkHashMaps to keep track of how much link we already pulled from db.
-				var linksHashMap = {};
-				// planetReachableFromSlices to keep track of which planet we already computed.
-				var planetReachableFromSlices = {};
-				// directPathesHopCount to keep track of how much direct routes we found.
-				var directPathesHopCount = [];
-				// planetsToPoll to keep track of next planet set to pull from db.
-				var planetsToPoll = { [MFalcon.arrival]: true };
-				// hopCount to keep track of the slice number we are currently computing.
-				var hopCount = 1;
-				
-				winston.log(`Pulling db slice by slice starting by our destination planet (${MFalcon.arrival}).`);
-				while(Object.keys(planetsToPoll).length){
-					// Generating SQL parameter. The list of planet to poll from db.
-					let linkedToStr = `"${Object.keys(planetsToPoll).join('","')}"`;
-					// Building SQL request. We want all links containing one edge matching the planet to poll array.
-					let sqlReq = `SELECT origin as E1, destination as E2, travel_time as W from routes WHERE destination IN (${linkedToStr}) OR origin IN (${linkedToStr})`;
-					// Executing request.
-					let routesFound = await Db.execRequest(sqlReq);
+			// linkHashMaps to keep track of how much link we already pulled from db.
+			var linksHashMap = {};
+			// planetReachableFromSlices to keep track of which planet we already computed.
+			var planetReachableFromSlices = {};
+			// directPathesHopCount to keep track of how much direct routes we found.
+			var directPathesHopCount = [];
+			// planetsToPoll to keep track of next planet set to pull from db.
+			var planetsToPoll = { [MFalcon.arrival]: true };
+			// hopCount to keep track of the slice number we are currently computing.
+			var hopCount = 1;
+			
+			winston.log(`Pulling db slice by slice starting by our destination planet (${MFalcon.arrival}).`);
+			while(Object.keys(planetsToPoll).length){
+				// Generating SQL parameter. The list of planet to poll from db.
+				let linkedToStr = `"${Object.keys(planetsToPoll).join('","')}"`;
+				// Building SQL request. We want all links containing one edge matching the planet to poll array.
+				let sqlReq = `SELECT origin as E1, destination as E2, travel_time as W from routes WHERE destination IN (${linkedToStr}) OR origin IN (${linkedToStr})`;
+				// Executing request.
+				let routesFound = await Db.execRequest(sqlReq);
 
-					// New planet set to poll from db.
-					let preparePlanetsToPoll = {};
-					for(let i = 0; i < routesFound.length; i++){
-						let currRoute = routesFound[i];
-						// MFalcon autonomy is < link distance; can't process later, discarding.
-						if(MFalcon.autonomy < currRoute.W) continue;
-						// We found a path !
-						if(currRoute.E1 == MFalcon.departure || currRoute.E2 == MFalcon.departure) directPathesHopCount.push(hopCount);
-						// If we havn't already pulled one of the edge of the link from db, add to next slice pull.
-						if(!planetsToPoll[currRoute.E1] && !planetReachableFromSlices[currRoute.E1]) preparePlanetsToPoll[currRoute.E1] = true;
-						if(!planetsToPoll[currRoute.E2] && !planetReachableFromSlices[currRoute.E2]) preparePlanetsToPoll[currRoute.E2] = true;
-						// If its the first time we see one of the edge of the link, initialise array.
-						if(!planetReachableFromSlices[currRoute.E1]) planetReachableFromSlices[currRoute.E1] = [];
-						if(!planetReachableFromSlices[currRoute.E2]) planetReachableFromSlices[currRoute.E2] = [];
-						// If we found out one of the edge of the link is reachable from a new slice; store that slice number.
-						if(planetReachableFromSlices[currRoute.E1].indexOf(hopCount) == -1) planetReachableFromSlices[currRoute.E1].push(hopCount);
-						if(planetReachableFromSlices[currRoute.E2].indexOf(hopCount) == -1) planetReachableFromSlices[currRoute.E2].push(hopCount);
-						// If its the first time we see one of the edge of the link, initialise link map.
-						if(!linksMap[currRoute.E1])	linksMap[currRoute.E1] = {};
-						if(!linksMap[currRoute.E2]) linksMap[currRoute.E2] = {};
-						// If this link is not stored in link map or this link is shorter than the stored one; write it. 
-						if(!linksMap[currRoute.E1][currRoute.E2] || linksMap[currRoute.E1][currRoute.E2].distance > currRoute.W)
-							linksMap[currRoute.E1][currRoute.E2] = { hopToDestination: hopCount, distance: currRoute.W };
-						if(!linksMap[currRoute.E2][currRoute.E1] || linksMap[currRoute.E2][currRoute.E1].distance > currRoute.W)
-							linksMap[currRoute.E2][currRoute.E1] = { hopToDestination: hopCount, distance: currRoute.W };
-						// Store the link hashmap to keep track of links processed.
-						if(!linksHashMap[currRoute.E1+currRoute.E2+currRoute.W]) linksHashMap[currRoute.E1+currRoute.E2+currRoute.W] = true;
-					}
-					planetsToPoll = preparePlanetsToPoll;
-					winston.log(`${((Object.keys(linksHashMap).length*100)/totalEntries).toFixed(2)}% => Pulled ${routesFound.length} links from db, slice #${hopCount}`);
-					hopCount++;
+				// New planet set to poll from db.
+				let preparePlanetsToPoll = {};
+				for(let i = 0; i < routesFound.length; i++){
+					let currRoute = routesFound[i];
+					// MFalcon autonomy is < link distance; can't process later, discarding.
+					if(MFalcon.autonomy < currRoute.W) continue;
+					// We found a path !
+					if(currRoute.E1 == MFalcon.departure || currRoute.E2 == MFalcon.departure) directPathesHopCount.push(hopCount);
+					// If we havn't already pulled one of the edge of the link from db, add to next slice pull.
+					if(!planetsToPoll[currRoute.E1] && !planetReachableFromSlices[currRoute.E1]) preparePlanetsToPoll[currRoute.E1] = true;
+					if(!planetsToPoll[currRoute.E2] && !planetReachableFromSlices[currRoute.E2]) preparePlanetsToPoll[currRoute.E2] = true;
+					// If its the first time we see one of the edge of the link, initialise array.
+					if(!planetReachableFromSlices[currRoute.E1]) planetReachableFromSlices[currRoute.E1] = [];
+					if(!planetReachableFromSlices[currRoute.E2]) planetReachableFromSlices[currRoute.E2] = [];
+					// If we found out one of the edge of the link is reachable from a new slice; store that slice number.
+					if(planetReachableFromSlices[currRoute.E1].indexOf(hopCount) == -1) planetReachableFromSlices[currRoute.E1].push(hopCount);
+					if(planetReachableFromSlices[currRoute.E2].indexOf(hopCount) == -1) planetReachableFromSlices[currRoute.E2].push(hopCount);
+					// If its the first time we see one of the edge of the link, initialise link map.
+					if(!linksMap[currRoute.E1])	linksMap[currRoute.E1] = {};
+					if(!linksMap[currRoute.E2]) linksMap[currRoute.E2] = {};
+					// If this link is not stored in link map or this link is shorter than the stored one; write it. 
+					if(!linksMap[currRoute.E1][currRoute.E2] || linksMap[currRoute.E1][currRoute.E2].distance > currRoute.W)
+						linksMap[currRoute.E1][currRoute.E2] = { hopToDestination: hopCount, distance: currRoute.W };
+					if(!linksMap[currRoute.E2][currRoute.E1] || linksMap[currRoute.E2][currRoute.E1].distance > currRoute.W)
+						linksMap[currRoute.E2][currRoute.E1] = { hopToDestination: hopCount, distance: currRoute.W };
+					// Store the link hashmap to keep track of links processed.
+					if(!linksHashMap[currRoute.E1+currRoute.E2+currRoute.W]) linksHashMap[currRoute.E1+currRoute.E2+currRoute.W] = true;
 				}
-				winston.log(`We pulled ${Object.keys(planetReachableFromSlices).length} planets from db; found ${directPathesHopCount.length} direct routes; with an universe depth of ${hopCount}.`);
-				winston.log(`Note: a result < 100% means some planets arn't linked to our search domain or links are impracticable given MFalcon autonomy (from ${MFalcon.departure} to ${MFalcon.arrival} with ${MFalcon.autonomy} days of autonomy).`);
-				resolve();
-			}catch(err){ reject(err); }
-		});
+				planetsToPoll = preparePlanetsToPoll;
+				winston.log(`${((Object.keys(linksHashMap).length*100)/totalEntries).toFixed(2)}% => Pulled ${routesFound.length} links from db, slice #${hopCount}`);
+				hopCount++;
+			}
+			winston.log(`We pulled ${Object.keys(planetReachableFromSlices).length} planets from db; found ${directPathesHopCount.length} direct routes; with an universe depth of ${hopCount}.`);
+			winston.log(`Note: a result < 100% means some planets arn't linked to our search domain or links are impracticable given MFalcon autonomy (from ${MFalcon.departure} to ${MFalcon.arrival} with ${MFalcon.autonomy} days of autonomy).`);
+			resolve();
+		}catch(err){ reject(err); }
 	}
 
 	this.findIndivisibleRoutes = () => {
 		var winston = new Logger('PathFinder->findIndivisibleRoutes', 4);
-		return new Promise((resolve, reject) => {
-			try{
-				winston.log(`Finding out indivisible routes pathes.`);
-				var routesQueue = [ [MFalcon.departure] ];
+		try{
+			winston.log(`Finding out indivisible routes pathes.`);
+			var routesQueue = [ [MFalcon.departure] ];
 
-				// Simple adapted Djikstra.
-				while(routesQueue.length){
-					// Pulling out on route from the stack.
-					let currRoute = routesQueue.shift();
-					// Extracting the two last planets of route.
-					let currRouteLastPlanet = currRoute[currRoute.length-1];
-					let currRouteSecondLastPlanet = currRoute[currRoute.length-2];
-					// Finding out the hop count to final destination of the last link in this route. If no link; score is "Infinity".
-					let currRouteHopCount = currRouteSecondLastPlanet ? linksMap[currRouteSecondLastPlanet][currRouteLastPlanet].hopToDestination : Infinity;
-					// For each available destination from the last planet in the current route
-					for(let neighborPlanet in linksMap[currRouteLastPlanet]){
-						// Extracting the hop count for this destination
-						let neighborPlanetHopCount = linksMap[currRouteLastPlanet][neighborPlanet].hopToDestination;
-						// If hop count is superior or equal to current route; we head backward. Discarding this option.
-						if(neighborPlanetHopCount >= currRouteHopCount && currRouteSecondLastPlanet) continue;
-						// If current route already has this planet, we are looping. Discarding this option.
-						if(currRoute.indexOf(neighborPlanet) != -1) continue;
-						// Clone current route.
-						let newRoute = currRoute.slice(0);
-						// Add neighbor to new route.
-						newRoute.push(neighborPlanet);
-						// Generate a hash (here, we use the stringified route array) for easy comparison.
-						let newRouteStr = newRoute.join('->');
-						// If the last planet of the route is the final destination and this route doesn't already exist in hashmap.
-						if(neighborPlanet == MFalcon.arrival && !indivisibleRoutes[newRouteStr]){
-							// Adding it to the hashmap.
-							indivisibleRoutes[newRouteStr] = newRoute;
-							winston.log(`${newRoute.length - 1} hops : ${newRouteStr}.`);
-						}
-						// Else the route is stacked again for another round.
-						else routesQueue.push(newRoute);
+			// Simple adapted Djikstra.
+			while(routesQueue.length){
+				// Pulling out on route from the stack.
+				let currRoute = routesQueue.shift();
+				// Extracting the two last planets of route.
+				let currRouteLastPlanet = currRoute[currRoute.length-1];
+				let currRouteSecondLastPlanet = currRoute[currRoute.length-2];
+				// Finding out the hop count to final destination of the last link in this route. If no link; score is "Infinity".
+				let currRouteHopCount = currRouteSecondLastPlanet ? linksMap[currRouteSecondLastPlanet][currRouteLastPlanet].hopToDestination : Infinity;
+				// For each available destination from the last planet in the current route
+				for(let neighborPlanet in linksMap[currRouteLastPlanet]){
+					// Extracting the hop count for this destination
+					let neighborPlanetHopCount = linksMap[currRouteLastPlanet][neighborPlanet].hopToDestination;
+					// If hop count is superior or equal to current route; we head backward. Discarding this option.
+					if(neighborPlanetHopCount >= currRouteHopCount && currRouteSecondLastPlanet) continue;
+					// If current route already has this planet, we are looping. Discarding this option.
+					if(currRoute.indexOf(neighborPlanet) != -1) continue;
+					// Clone current route.
+					let newRoute = currRoute.slice(0);
+					// Add neighbor to new route.
+					newRoute.push(neighborPlanet);
+					// Generate a hash (here, we use the stringified route array) for easy comparison.
+					let newRouteStr = newRoute.join('->');
+					// If the last planet of the route is the final destination and this route doesn't already exist in hashmap.
+					if(neighborPlanet == MFalcon.arrival && !indivisibleRoutes[newRouteStr]){
+						// Adding it to the hashmap.
+						indivisibleRoutes[newRouteStr] = newRoute;
+						winston.log(`${newRoute.length - 1} hops : ${newRouteStr}.`);
 					}
+					// Else the route is stacked again for another round.
+					else routesQueue.push(newRoute);
 				}
+			}
 
-				winston.log(`${Object.keys(indivisibleRoutes).length} indivisible routes found !`);
+			winston.log(`${Object.keys(indivisibleRoutes).length} indivisible routes found !`);
 
-				resolve(indivisibleRoutes);
-			}catch(err){ reject(err); }
-		});
+			resolve(indivisibleRoutes);
+		}catch(err){ reject(err); }
 	}
 
 	this.computeOptimalWaypoints = (Empire, route) => {
 		var winston = new Logger('PathFinder->computeOptimalWaypoints', 4);
-		return new Promise((resolve, reject) => {
-			try{
-				var generateBhHashMap = Empire => {
-					var tempBh = Empire.bounty_hunters.filter(bh => route.indexOf(bh.planet) != -1);
-					var bountyHunters = {};
-					for(var i = 0; i < tempBh.length; i++){
-						if(!bountyHunters[tempBh[i].planet])
-							bountyHunters[tempBh[i].planet] = [];
-						bountyHunters[tempBh[i].planet].push(tempBh[i].day);
-					}
-					return bountyHunters;
-				}		
-				
-				var hitCountIncrement = (planet, day, contiguous) => {
-					var bountyHunters = Empire.bounty_hunters.filter(bh => route.indexOf(bh.planet) != -1);
-					var hitCount = 0;
-					if(contiguous == 0)
-						hitCount = (bountyHunters.filter(bh => bh.planet == planet && bh.day == day).length) ? 1 : 0;
-					else{
-						for(var i = day - contiguous; i <= day; i++){
-							var bhCount = (bountyHunters.filter(bh => bh.planet == planet && bh.day == i).length);
-							hitCount += bhCount;
+		try{
+			winston.log(`Computing optimal waypoints for route [${route.join('->')}].`);
+			// Extracting bounty hunters data associated with this route
+			var tempBh = Empire.bounty_hunters.filter(bh => route.indexOf(bh.planet) != -1);
+			var bountyHunters = {};
+			// Looping through raw data
+			for(let i = 0; i < tempBh.length; i++){
+				// Initialise entry if needed
+				if(!bountyHunters[tempBh[i].planet])
+					bountyHunters[tempBh[i].planet] = [];
+				// Associate planet to day with bounty hunter
+				bountyHunters[tempBh[i].planet].push(tempBh[i].day);
+			}
+
+			// Function returning how much time we get on a planet at the same time a bounty hunter is on it
+			var getHitCount = (planet, startDay, endDay) => {
+				// If we got no bounty hunter data on this planet; no risk. Return 0.
+				if(!bountyHunters[planet]) return 0;
+				var increment = 0;
+				// For each entry, if we are on this planet, increment risk.
+				bountyHunters[planet].forEach(bhDay => (bhDay >= startDay && bhDay <= endDay) ? increment++ : 0);
+				return increment;
+			}
+
+			// Simplified A* algorithm. We only look to go forward; so we don't need to store open and closed nodes.
+			// Only a heap is needed.
+			var heap = [];
+			// For sake of performance, we use array to define our nodes
+			// [ type(0=passBy,1=refuel,2=wait), planetName, actionDuration, totalTravelTime, 
+			// totalBhCrossed, remainingFuel, totalStepCount, parent ]
+			// Defining our start node.
+			var startNode = [ 0, route[0], 0, 0, getHitCount(route[0], 0, 0), MFalcon.autonomy, 1, false ];
+			// Our best node is initialised to the starting one.
+			var bestNode = startNode;
+
+			// Initialise heap with our start node.
+			heap.push(startNode);
+
+			// Here we go for the search !
+			while(heap.length){
+				// Get the first node in the heap.
+				let node = heap.shift();
+
+				// If we got a full path; end here.
+				if(node[1] == MFalcon.arrival){
+					// Function to reconstruct/flatten our linked list.
+					var reconstruct = node => {
+						// If we got a parent stored on our node, we have a level more to flatten.
+						if(node[7]){
+							// Recurse here.
+							let path = reconstruct(node[7]);
+							// Remove parent from node.
+							node.pop();
+							// Add node to path.
+							path.push(node);
+							// return path.
+							return path;
 						}
+						// This is the starting node. No parent; no path. Should not happen (data should be correctly constrained before A* search).
+						else return [ node ]
+					};
+					// Reconstructing our path from last found node.
+					var path = reconstruct(node);
+					// Reconstructing a verbose path. We don't need performance anymore.
+					var verbosePath = [];
+					for(let i = 0; i < path.length; i++){
+						let verboseNode = {};
+						if(path[i][0] == 0) verboseNode.type = "passingBy";
+						else if(path[i][0] == 1) verboseNode.type = "refueling";
+						else verboseNode.type = "waiting";
+						verboseNode.planet = path[i][1];
+						verboseNode.duration = path[i][2];
+						verboseNode.travelTime = path[i][3];
+						verboseNode.hitCount = path[i][4];
+						verboseNode.remainingFuel = path[i][5];
+						verboseNode.steps = path[i][6];
+						verbosePath.push(verboseNode);
 					}
-					return hitCount;
+					winston.log(`Found a path for route ${route.join('->')} ! Achievable in ${verbosePath[verbosePath.length-1].travelTime} days, with ${verbosePath[verbosePath.length-1].hitCount} bountyhunters crossed.`);
+					//console.log(verbosePath);
+					return verbosePath;
 				}
 
-				var aStar = require('a-star');
-				var bountyHuntersHashMap = generateBhHashMap(Empire);
+				// Initialising neighbor list.
+				let neighbors = [];
+				// Identifying next planet in route.
+				let nextPlanet = route[route.indexOf(node[1])+1];
+				// Identifying next planet distance.
+				let nextPlanetDistance = linksMap[node[1]][nextPlanet].distance;
 
-				var path = aStar({
-					start: {
-						type: "passingBy"
-						, planet: route[0]
-						, duration: 0
-						, travelTime: 0
-						, hitCount: 0
-						, remainingFuel: MFalcon.autonomy
-						, steps: 1
-					}
-					, isEnd: node => MFalcon.arrival == node.planet
-					, neighbor: node => {
-						var neighborList = [];
-						var nextPlanet = route[route.indexOf(node.planet) + 1];
-						var nextPlanetDistance = linksMap[node.planet][nextPlanet].distance;
-						if(node.remainingFuel < linksMap[node.planet][nextPlanet].distance){
-							nextNode = {
-								type: "refueling"
-								, planet: node.planet
-								, hitCount: (hitCountIncrement(node.planet, node.travelTime+1, 0)) + node.hitCount
-								, duration: 1
-								, travelTime: node.travelTime+1
-								, remainingFuel: MFalcon.autonomy
-								, steps: node.steps+1
-							};
-							if(nextNode.travelTime > Empire.countdown) return [];
-							neighborList.push(nextNode);
-							return neighborList;
-						}else{
-							nextNode = {
-								type: "passingBy"
-								, planet: nextPlanet
-								, hitCount: (hitCountIncrement(nextPlanet, node.travelTime+nextPlanetDistance, 0)) + node.hitCount
-								, duration: nextPlanetDistance
-								, travelTime: node.travelTime + nextPlanetDistance
-								, remainingFuel: node.remainingFuel - nextPlanetDistance
-								, steps: node.steps+1
-							};
-							if(nextNode.travelTime > Empire.countdown) return [];
-							neighborList.push(nextNode);
+				// If we havn't got needed fuel to go to next planet; add a refuel node to neighbors.
+				if(node[5] < nextPlanetDistance){
+					let refuelNode = [1, node[1], 1, node[3]+1, getHitCount(node[1], node[3]+1, node[3]+1)+node[4], MFalcon.autonomy, node[6]+1];
+					if(refuelNode[3] <= Empire.countdown) neighbors.push(refuelNode);
+				} 
+				// Else, add next planet to the neighbors list.
+				else {
+					let passingByNode = [0, nextPlanet, nextPlanetDistance, node[3]+nextPlanetDistance, getHitCount(nextPlanet, node[3]+nextPlanetDistance, node[3]+nextPlanetDistance)+node[4], node[5]-nextPlanetDistance, node[6]+1];
+					if(passingByNode[3] <= Empire.countdown) neighbors.push(passingByNode);
+				}
+
+				// If last node in the chain isn't of type "wait"
+				if(node[0] != 2){
+					// Identify best nodes going up in wait times.
+					// Arbitrary stop vars.
+					let howMuchLoopWithoutImprovement = 0;
+					let lowestHitCount = Infinity;
+					// Loop through this space.
+					for(let i = 1; i < (Empire.countdown-node[3]-1); i++){
+						// If our arbitrary stop condition is greater than the config hardlimit, break.
+						if(howMuchLoopWithoutImprovement > Config.HardLimit) break;
+						// Computing hit count.
+						let hitCount = getHitCount(node[1], node[3], node[3]+i);
+						// If hitcount is better than the lowest found, reset arbitrary stop vars.
+						if(hitCount < lowestHitCount){
+							lowestHitCount = hitCount;
+							howMuchLoopWithoutImprovement = 0;
 						}
-
-						if(node.type == "waiting") return neighborList;
-
-						var maxWait = 0;
-						if(bountyHuntersHashMap[node.planet]) maxWait = Math.max(bountyHuntersHashMap[node.planet])-1;
-						else if(bountyHuntersHashMap[nextPlanet]) maxWait = Math.max(bountyHuntersHashMap[nextPlanet]);
-						else if(Empire.countdown < Config.HardLimit) maxWait = Empire.countdown;
-						else maxWait = Config.HardLimit;
-
-						if(maxWait > Config.HardLimit) maxWait = Config.HardLimit;
-
-						for(var i = 1; i <= maxWait; i++){
-							var nextNode = {
-								type: "waiting"
-								, planet: node.planet
-								, duration: i
-								, hitCount: hitCountIncrement(node.planet, node.travelTime + i, i) + node.hitCount
-								, travelTime: node.travelTime+i
-								, remainingFuel: MFalcon.autonomy
-								, steps: node.steps+1
-							};
-							if(nextNode.travelTime < Empire.countdown 
-								&& nextPlanetDistance < (Empire.countdown - nextNode.travelTime))
-								neighborList.push(nextNode);
+						// Else increment it.
+						else howMuchLoopWithoutImprovement++;
+						// Build and add our wait node to the neighbors list.
+						let waitNode = [2, node[1], i, node[3]+i, hitCount+node[4], MFalcon.autonomy, node[6]+1];
+						neighbors.push(waitNode);
+					}
+					// Identify best nodes going down in wait times.
+					// Arbitrary stop vars.
+					howMuchLoopWithoutImprovement = 0;
+					lowestHitCount = Infinity;
+					// Loop through this space.
+					for(let i = Empire.countdown; i > (Empire.countdown-node[3]-1); i--){
+						// If our arbitrary stop condition is greater than the config hardlimit, break.
+						if(howMuchLoopWithoutImprovement > Config.HardLimit) break;
+						// Computing hit count.
+						let hitCount = getHitCount(node[1], node[3], node[3]+i);
+						// If hitcount is better than the lowest found, reset arbitrary stop vars.
+						if(hitCount < lowestHitCount){
+							lowestHitCount = hitCount;
+							howMuchLoopWithoutImprovement = 0;
 						}
+						// Else increment it.
+						else howMuchLoopWithoutImprovement++;
+						// Build and add our wait node to the neighbors list.
+						let waitNode = [2, node[1], i, node[3]+i, hitCount+node[4], MFalcon.autonomy, node[6]+1];
+						neighbors.push(waitNode);
+					}		
+				}
 
-						return neighborList;
-					}
-					, distance: (nodeA, nodeB) => {
-						if(nodeA.planet == nodeB.planet) return (nodeB.hitCount != nodeA.hitCount) ? Infinity : 0;
-						else return linksMap[nodeA.planet][nodeB.planet].distance;
-					}
-					, heuristic: node => node.hitCount
-					, hash: node => JSON.stringify(node)
-				});
+				// For each neighbors.
+				for(let i = 0; i < neighbors.length; i++){
+					// Add our last node as a parent.
+					neighbors[i][7] = node;
+					// If our neighbor is better than the best node found, based on hitcount, replace it.
+					if(neighbors[i][4] <= bestNode[4]) bestNode = neighbors[i];
+					// Add neighbor to the heap.
+					heap.push(neighbors[i]);
+				}
+				// Sort the heap, hitcount then traveltime.
+				heap.sort((nA, nB) => (nA[4] - nB[4]) || (nA[3] - nB[3]));
+			}
 
-				console.log(path);
-
-			}catch(err){ reject(err); }
-		});
+			winston.warn(`Cannot find a valid path ! Route is ${route.join('->')} and empire countdown ${Empire.countdown} days.`);
+			return false;
+		}catch(err){ 
+			winston.err(err);
+			throw err; 
+		}
 	}
 
 	this.findIndivisibleRoutesVariation = depth => {
