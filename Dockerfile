@@ -4,16 +4,14 @@ FROM node:12.4.0
 RUN mkdir /app
 
 # Copying softwares into image
-ADD front /app/front
-ADD back-worker /app/back-worker
-ADD back-api /app/back-api
+ADD C3PO /app/C3PO
+ADD MilleniumFalconComputer /app/MilleniumFalconComputer
 ADD build.sh /app/
-
 
 WORKDIR /app
 
 RUN bash build.sh
 
-WORKDIR /app/back-api/
+WORKDIR /app/MilleniumFalconComputer/
 
 CMD ["yarn", "run", "start"]
