@@ -1,5 +1,0 @@
-{
-	"HardLimit": 10000
-	, "MFalconConfigPath": "./dataset/live/millenium-falcon.json"
-	, "LogLevel": 4
-}

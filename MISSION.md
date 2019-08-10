@@ -206,7 +206,7 @@ The application should display 81% as The Millenium Falcon can go from Tatooine 
 }
 ```
 
-The application should display 90% as The Millenium Falcon can go from Tatooine to Endor in 8 days with the following plan:
+The application should display 90% as The Millenium Falcon can go from Tatooine to Endor in 9 days with the following plan:
 
 *   Travel from Tatooine to Dagobah.
 *   Refuel on Dagobah
