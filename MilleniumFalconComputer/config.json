@@ -1,0 +1,11 @@
+{
+	"MFalconConfigPath": "./dataset/millenium-falcon.json"
+	, "BufferDbPath": "./dataset/buffer.db"
+	, "LogLevel": 4
+	, "HardTimeoutSec": 60
+	, "SoftTimeoutSec": 20
+	, "Port": 3000
+	, "MaxSimultaneousComputation": 10
+	, "AllowAllAccessControlOrigins": 1
+	, "MaxSentRouteToClient": 10
+}

@@ -1,0 +1,17 @@
+{
+	"name": "MilleniumFalconComputer",
+	"version": "0.0.1",
+	"description": "MilleniumFalconComputer backend",
+	"author": "Alexandre Guillioud <alexandre@guillioud.com>",
+	"private": true,
+	"scripts": {
+		"start": "node main.js"
+	},
+	"dependencies": {
+		"express": "^4.17.1",
+		"md5": "^2.2.1",
+		"md5-file": "^4.0.0",
+		"sqlite3": "^4.0.9",
+		"validator": "^11.1.0"
+	}
+}
