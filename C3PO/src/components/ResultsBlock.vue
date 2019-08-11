@@ -6,7 +6,7 @@
 				<h4>Route #{{key+1}}</h4>
 				<h6><b>Odds to make it safe :</b> {{route.score.chanceToMakeIt}}%</h6>
 				<h6><b>Time to travel :</b> {{route.score.travelTime}} days</h6>
-				<h6><b>Route identifier :</b> {{ route.identifier }}</h6>
+				<h6 class="forceWrap"><b>Route identifier :</b> {{ route.identifier }}</h6>
 			</div>
 		</div>
 	</div>
@@ -29,4 +29,5 @@ export default {
 <style scoped>
 	#resultsBlock{ text-align: center; }
 	#resultsBlock .title{ color: black;	}
+	.forceWrap{ overflow-wrap: anywhere; }
 </style>
