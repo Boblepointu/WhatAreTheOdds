@@ -111,7 +111,7 @@ docker run -p 3000:3000 -v /home/config.json:/app/MilleniumFalconComputer/config
 
 - As said before, a precalculation is done by the app at start. The biggest universes can't be fully explored, since we are playing on a NP-Complete problem. However, as time pass, more and more routes will be precalculated. It imply that on first start, you could have only one route to compute against. You must wait a few seconds/minute to get enough routes in buffer database to have a meaningfull result. Don't be afraid, with universes containing millions of entries it take roughly 10's of seconds to have a good enough sample.
 
-- One small case is not managed. When you got multiple links between two planets. A bounty hunter bypass could be hiding in the longer routes which are never used.
+- One small case is not managed. When you got multiple links between two planets. A bounty hunter bypass could be hiding in the longer links which are ignored in favor of the smaller.
 
 ## Configuration
 
