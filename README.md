@@ -116,9 +116,9 @@ docker run -p 3000:3000 -v /home/config.json:/app/MilleniumFalconComputer/config
 ## Configuration
 
 You can configure the app as wished by setting a few environment variables.
-You can also hard set these variables into corresponding `config.json` files.
+You can also hard set these variables into corresponding [./MilleniumFalconComputer/config.json](./MilleniumFalconComputer/config.json) file.
 
-### MilleniumFalconComputer configuration ([./MilleniumFalconComputer/config.json](./MilleniumFalconComputer/config.json))
+### MilleniumFalconComputer configuration
 
 #### MaxSimultaneousComputation 
   - Config file entry : "MaxSimultaneousComputation"
