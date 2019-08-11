@@ -237,7 +237,6 @@ module.exports = function(Db, MFalcon){
 						verbosePath.push(verboseNode);
 					}
 					winston.log(`Found a path for route ${route.join('->')} ! Achievable in ${verbosePath[verbosePath.length-1].travelTime} days, with ${verbosePath[verbosePath.length-1].hitCount} bountyhunters crossed.`);
-					//console.log(verbosePath);
 					return verbosePath;
 				}
 
@@ -247,7 +246,6 @@ module.exports = function(Db, MFalcon){
 				let nextPlanet = route[route.indexOf(node[1])+1];
 				// Identifying next planet distance.
 				let nextPlanetDistance = await getLinkDistance(node[1], nextPlanet);
-				//let nextPlanetDistance = linksMap[node[1]][nextPlanet];
 
 				// If we havn't got needed fuel to go to next planet; add a refuel node to neighbors.
 				if(node[5] < nextPlanetDistance){
