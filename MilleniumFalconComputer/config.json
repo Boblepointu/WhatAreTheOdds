@@ -3,7 +3,7 @@
 	, "BufferDbPath": "./dataset/buffer.db"
 	, "LogLevel": 4
 	, "HardTimeoutSec": 60
-	, "SoftTimeoutSec": 1
+	, "SoftTimeoutSec": 20
 	, "Port": 3000
 	, "MaxSimultaneousComputation": 10
 	, "AllowAllAccessControlOrigins": 1
