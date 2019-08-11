@@ -259,13 +259,8 @@ MMMMMMMMMMMMMMMMMMMMMWNKOxolc:::cloxO0KNWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM`);
 		// First we validate each input, config and databases
 		await ValidateEverything();
 
-		// Generating hashes
 		var MFalconConfigPath = process.env.MFALCON_CONFIG_PATH || Config.MFalconConfigPath || './dataset/millenium-falcon.json';
 		var MFalcon = require(MFalconConfigPath);
-		winston.log(`Generating universe db and Millenium Falcon hash.`);
-		var DbAndMFalconConfigHash = await Md5File(MFalcon.routes_db);
-		DbAndMFalconConfigHash = Md5(DbAndMFalconConfigHash+JSON.stringify([MFalcon.departure, MFalcon.arrival, MFalcon.autonomy]));
-		winston.log(`Db and Millenium Falcon hash is ${DbAndMFalconConfigHash}.`);
 
 		// We launch the DB worker and wait for a minimum of one route
 		var BufferDbPath = process.env.BUFFER_DB_PATH || Config.BufferDbPath || './dataset/buffer.db';
@@ -287,6 +282,12 @@ MMMMMMMMMMMMMMMMMMMMMWNKOxolc:::cloxO0KNWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM`);
 		winston.log(`Creating indexes on UniverseDb.`);
 		await UniverseDb.execMultipleRequest(`CREATE INDEX IF NOT EXISTS "full_index" ON "routes" ("origin", "destination")`);
 		await UniverseDb.closeDb();
+
+		// Generating hashes
+		winston.log(`Generating universe db and Millenium Falcon hash.`);
+		var DbAndMFalconConfigHash = await Md5File(MFalcon.routes_db);
+		DbAndMFalconConfigHash = Md5(DbAndMFalconConfigHash+JSON.stringify([MFalcon.departure, MFalcon.arrival, MFalcon.autonomy]));
+		winston.log(`Db and Millenium Falcon hash is ${DbAndMFalconConfigHash}.`);
 
 		winston.log(`Executing BackDbWorker.`);
 		var backDbWorker;
