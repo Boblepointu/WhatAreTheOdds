@@ -1,6 +1,7 @@
+# WhatAreTheOdds
+
 ![](_readme_assets/starwars_logo.png)
 
-# WhatAreTheOdds
 A long time ago in a galaxy far, far away...
 
 The Death Star - the Empire's ultimate weapon - is almost operational and is currently approaching the Endor planet. The countdown has started.
