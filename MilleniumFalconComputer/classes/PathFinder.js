@@ -12,7 +12,7 @@ module.exports = function(MFalcon){
 		return new Promise(async (resolve, reject) => {
 			try{
 				// Finding out how much entries we got in the provided database.
-				var totalEntries = (await Db.execRequest(`SELECT count(*) as cnt FROM routes`))[0].cnt;
+				var totalEntries = (await Db.execRequest(`SELECT count(*) as cnt FROM routes`, []))[0].cnt;
 				winston.log(`There is ${totalEntries} links to discover in db.`);
 
 				// linkHashMaps to keep track of how much link we already pulled from db.
@@ -33,7 +33,7 @@ module.exports = function(MFalcon){
 					// Building SQL request. We want all links containing one edge matching the planet to poll array.
 					let sqlReq = `SELECT origin as E1, destination as E2, travel_time as W FROM routes WHERE destination IN (${linkedToStr}) OR origin IN (${linkedToStr})`;
 					// Executing request.
-					let routesFound = await Db.execRequest(sqlReq);
+					let routesFound = await Db.execRequest(sqlReq, []);
 
 					// New planet set to poll from db.
 					let preparePlanetsToPoll = {};
@@ -187,8 +187,6 @@ module.exports = function(MFalcon){
 			// totalBhCrossed, remainingFuel, totalStepCount, heuristics, parent ]
 			// Defining our start node.
 			var startNode = [ 0, route[0], 0, 0, getHitCount(route[0], 0, 0), MFalcon.autonomy, 1, false ];
-			// Our best node is initialised to the starting one.
-			var bestNode = startNode;
 
 			// Initialise heap with our start node.
 			heap.push(startNode);
@@ -271,8 +269,8 @@ module.exports = function(MFalcon){
 				}
 
 				heap = heap.concat(neighbors);
-				// Sort the heap, hitcount then heuristics then traveltime.
-				heap.sort((nA, nB) => (nA[4] - nB[4]) || (nA[7] - nB[7]) || (nA[3] - nB[3]));
+				// Sort the heap, hitcount then heuristics then traveltime then refueling over waiting.
+				heap.sort((nA, nB) => (nA[4] - nB[4]) || (nA[7] - nB[7]) || (nA[3] - nB[3]) || (nA[0] - nB[0]));
 			}
 
 			winston.warn(`Cannot find a valid path ! Route is ${route.join('->')} and empire countdown ${Empire.countdown} days.`);

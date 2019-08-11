@@ -118,7 +118,7 @@ var ValidateEverything = async () =>{
 	winston.log(`+ Universe db open ok`);
 
 	try{
-		var routesTableExist = (await UniverseDb.selectRequest(`SELECT name FROM sqlite_master WHERE type='table' AND name='routes';`))[0] ? true : false;
+		var routesTableExist = (await UniverseDb.selectRequest(`SELECT name FROM sqlite_master WHERE type='table' AND name='routes'`, []))[0] ? true : false;
 		if(!routesTableExist){
 			badParamArray.push(`[universe-db(${MFalcon.routes_db})] Doesn't contain a routes table`);
 			return badParamArray;
@@ -130,7 +130,7 @@ var ValidateEverything = async () =>{
 	}
 
 	try{
-		var routesTableColumns = await UniverseDb.selectRequest(`PRAGMA table_info(routes)`);
+		var routesTableColumns = await UniverseDb.selectRequest(`PRAGMA table_info(routes)`, []);
 		
 		if(routesTableColumns.length != 3){
 			badParamArray.push(`[universe-db(${MFalcon.routes_db})] Routes table doesn't contain 3 column`);
@@ -179,7 +179,7 @@ var ValidateEverything = async () =>{
 	}
 
 	try{
-		var routesTable = await UniverseDb.selectRequest(`SELECT * FROM routes `);
+		var routesTable = await UniverseDb.selectRequest(`SELECT * FROM routes`, []);
 		if(routesTable.length == 0){
 			badParamArray.push(`[universe-db(${MFalcon.routes_db})] Routes table is empty`);
 			return badParamArray;
