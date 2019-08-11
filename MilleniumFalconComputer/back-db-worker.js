@@ -30,7 +30,7 @@ const main = async () => {
 	var BufferDb = new Db();
 	await BufferDb.openDb(BufferDbPath);
 
-	var pathFinder = new PathFinder(DataSet.MFalcon);
+	var pathFinder = new PathFinder(UniverseDb, DataSet.MFalcon);
 
 	winston.log(`Checking if this universe is already explored.`);
 	var cnt = (await BufferDb.selectRequest(`SELECT count(*) as cnt FROM fully_explored_universes WHERE db_and_mfalcon_config_md5=?`, [DbAndMFalconConfigHash]))[0].cnt;
@@ -40,13 +40,7 @@ const main = async () => {
 	}
 
 	winston.log(`Building in memory universe graph.`);
-	var linksMap = await pathFinder.buildGraph(UniverseDb);
-
-	var cnt = (await BufferDb.selectRequest(`SELECT count(*) as cnt FROM links_map WHERE db_and_mfalcon_config_md5=?`, [DbAndMFalconConfigHash]))[0].cnt;
-	if(cnt == 0){
-		winston.log(`This universe links map is not available in db. Adding it.`);
-		await BufferDb.insertRequest(`INSERT INTO links_map (db_and_mfalcon_config_md5, links_map) VALUES (?, ?)`, [DbAndMFalconConfigHash, JSON.stringify(linksMap)]);
-	}else winston.log(`This universe links map has already been saved in db. Continuing.`);
+	await pathFinder.buildGraph();
 
 	winston.log(`Pulling already found routes.`);
 	var foundRoutes = await BufferDb.selectRequest(`SELECT * FROM routes WHERE db_and_mfalcon_config_md5=?`, [DbAndMFalconConfigHash]);

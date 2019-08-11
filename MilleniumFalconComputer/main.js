@@ -272,13 +272,22 @@ MMMMMMMMMMMMMMMMMMMMMWNKOxolc:::cloxO0KNWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM`);
 		winston.log(`Initialising buffer database from ${BufferDbPath}.`);
 		var BufferDb = new Db();
 		
-		// Populating BufferDb if not existing
+		// Creating, populating BufferDb if not existing
 		if(!Fs.existsSync(BufferDbPath)){
 			winston.log(`BufferDb does not exist. Creating and populating.`)
 			await BufferDb.createDb(BufferDbPath);
+			await BufferDb.openDb(BufferDbPath);
 			await BufferDb.execMultipleRequest(Fs.readFileSync('./buffer.db.sql', 'utf8'));
 		}else await BufferDb.openDb(BufferDbPath);
 		
+		// Creating indexes on UniverseDb
+		winston.log(`Opening UniverseDb from ${MFalcon.routes_db}.`);
+		var UniverseDb = new Db();
+		await UniverseDb.openDb(MFalcon.routes_db);
+		winston.log(`Creating indexes on UniverseDb.`);
+		await UniverseDb.execMultipleRequest(`CREATE INDEX IF NOT EXISTS "full_index" ON "routes" ("origin", "destination")`);
+		await UniverseDb.closeDb();
+
 		winston.log(`Executing BackDbWorker.`);
 		var backDbWorker;
 
@@ -287,7 +296,7 @@ MMMMMMMMMMMMMMMMMMMMMWNKOxolc:::cloxO0KNWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM`);
 			backDbWorker.removeListener('error', onError);
 			backDbWorker.removeListener('done', onDone);
 		};
-		var onDone = routes => { 
+		var onDone = routes => {
 			winston.log(`BackDbWorker gracefully closed. All routes in this universe has been found !`);
 			backDbWorker.removeListener('error', onError);
 			backDbWorker.removeListener('done', onDone);
@@ -306,6 +315,9 @@ MMMMMMMMMMMMMMMMMMMMMWNKOxolc:::cloxO0KNWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM`);
 		}
 
 		winston.log(`BufferDb has got ${availableRoutes} available routes for processing. Continuing.`);
+
+		winston.log(`Closing BufferDb.`);
+		await BufferDb.closeDb();
 
 		// We launch API
 		winston.log(`Executing BackApiWorker.`);

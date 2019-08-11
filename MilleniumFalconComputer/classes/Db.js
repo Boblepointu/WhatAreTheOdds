@@ -63,7 +63,7 @@ module.exports = function(){
 				db.exec(req);
 				resolve();
 			}catch(err){
-				winston.error(`Error querying database with request "${req}" and params "${params.join(', ')}".`);
+				winston.error(`Error querying database with request "${req}".`);
 				reject(err);
 			}
 		});

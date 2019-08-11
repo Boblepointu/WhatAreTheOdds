@@ -1,13 +1,13 @@
 "use strict";
 
-module.exports = function(MFalcon){
+module.exports = function(Db, MFalcon){
 	const Logger = require('./Logger.js');
 	const Config = require('../config.json');
 
 	var linksMap = {};
 	var routes = {};
 
-	this.buildGraph = Db => {
+	this.buildGraph = () => {
 		var winston = Logger('PathFinder->buildGraph', 3);
 		return new Promise(async (resolve, reject) => {
 			try{
@@ -69,7 +69,7 @@ module.exports = function(MFalcon){
 				}
 				winston.log(`We pulled ${Object.keys(planetReachableFromSlices).length} planets from db; found ${directPathesHopCount.length} direct routes; with an universe depth of ${hopCount}.`);
 				winston.log(`Note: a result < 100% means some planets arn't linked to our search domain or links are impracticable given MFalcon autonomy (from ${MFalcon.departure} to ${MFalcon.arrival} with ${MFalcon.autonomy} days of autonomy).`);
-				resolve(linksMap);
+				resolve();
 			}catch(err){ reject(err); }
 		});
 	}
@@ -121,13 +121,17 @@ module.exports = function(MFalcon){
 		}catch(err){ throw err; }
 	}
 
-	this.computeOptimalWaypoints = (Empire, route, _linksMap) => {
+	this.computeOptimalWaypoints = async (Empire, route) => {
 		var winston = new Logger('PathFinder->computeOptimalWaypoints', 3);
 		try{			
 			winston.log(`Computing optimal waypoints for route [${route.join('->')}].`);
 
-			// If we pass a linkmap, override the one generated with buildGraph call.
-			if(_linksMap) linksMap = _linksMap;
+			var getLinkDistance = async (from, to) => {
+				try{
+					var results = await Db.selectRequest(`SELECT travel_time FROM routes WHERE (origin=? AND destination=?) OR (origin=? AND destination=?) ORDER BY travel_time ASC`, [from, to, to, from]);
+					return results[0].travel_time;
+				}catch(err){ throw err; }
+			}
 
 			// Extracting bounty hunters data associated with this route
 			var tempBh = Empire.bounty_hunters.filter(bh => route.indexOf(bh.planet) != -1);
@@ -145,7 +149,7 @@ module.exports = function(MFalcon){
 			var routeMinimumTraversalTime = 0;
 			for(let i = 0; i < route.length; i++)
 				if(route[i+1])
-					routeMinimumTraversalTime += linksMap[route[i]][route[i+1]].distance;
+					routeMinimumTraversalTime += await getLinkDistance(route[i], route[i+1]);
 			routeMinimumTraversalTime = routeMinimumTraversalTime + Math.round(routeMinimumTraversalTime/MFalcon.autonomy);
 
 
@@ -159,23 +163,23 @@ module.exports = function(MFalcon){
 				return increment;
 			}
 
-			var getTimeToDestination = from => {
+			var getTimeToDestination = async from => {
 				var startIndex = route.indexOf(from);
 				var timeToDestination = 0;
 				for(let i = startIndex; i < route.length; i++)
 					if(route[i+1])
-						timeToDestination += linksMap[route[i]][route[i+1]].distance
+						timeToDestination += await getLinkDistance(route[i], route[i+1]);
 				timeToDestination = timeToDestination + Math.round(timeToDestination/MFalcon.autonomy);
 				return timeToDestination;
 			}
 
-			var getHeuristicRisk = (from, travelTimeSoFar) => {
+			var getHeuristicRisk = async (from, travelTimeSoFar) => {
 				var risk = 0;
 				var startIndex = route.indexOf(from);
-				var timeToDestination = getTimeToDestination(from);
-				for(let i = startIndex; i < route.length; i++)
-					if(route[i+1] && bountyHunters[route[i+1]])
-						bountyHunters[route[i+1]].forEach(bhDay => (bhDay >= travelTimeSoFar && bhDay <= (travelTimeSoFar+timeToDestination)) ? risk++ : 0);
+				var timeToDestination = await getTimeToDestination(from);
+				for(let i = startIndex+1; i < route.length; i++)
+					if(route[i] && bountyHunters[route[i]])
+						bountyHunters[route[i]].forEach(bhDay => (bhDay >= travelTimeSoFar && bhDay <= (travelTimeSoFar+timeToDestination)) ? risk++ : 0);
 				return risk;
 			}
 
@@ -242,26 +246,27 @@ module.exports = function(MFalcon){
 				// Identifying next planet in route.
 				let nextPlanet = route[route.indexOf(node[1])+1];
 				// Identifying next planet distance.
-				let nextPlanetDistance = linksMap[node[1]][nextPlanet].distance;
+				let nextPlanetDistance = await getLinkDistance(node[1], nextPlanet);
+				//let nextPlanetDistance = linksMap[node[1]][nextPlanet];
 
 				// If we havn't got needed fuel to go to next planet; add a refuel node to neighbors.
 				if(node[5] < nextPlanetDistance){
-					let refuelNode = [1, node[1], 1, node[3]+1, getHitCount(node[1], node[3]+1, node[3]+1)+node[4], MFalcon.autonomy, node[6]+1, getHeuristicRisk(node[1], node[3]+1), node];
+					let refuelNode = [1, node[1], 1, node[3]+1, getHitCount(node[1], node[3]+1, node[3]+1)+node[4], MFalcon.autonomy, node[6]+1, await getHeuristicRisk(node[1], node[3]+1), node];
 					if(refuelNode[3] <= Empire.countdown) neighbors.push(refuelNode);
 				} 
 				// Else, add next planet to the neighbors list.
 				else {
-					let passingByNode = [0, nextPlanet, nextPlanetDistance, node[3]+nextPlanetDistance, getHitCount(nextPlanet, node[3]+nextPlanetDistance, node[3]+nextPlanetDistance)+node[4], node[5]-nextPlanetDistance, node[6]+1, getHeuristicRisk(node[1], node[3]+nextPlanetDistance), node];
+					let passingByNode = [0, nextPlanet, nextPlanetDistance, node[3]+nextPlanetDistance, getHitCount(nextPlanet, node[3]+nextPlanetDistance, node[3]+nextPlanetDistance)+node[4], node[5]-nextPlanetDistance, node[6]+1, await getHeuristicRisk(node[1], node[3]+nextPlanetDistance), node];
 					if(passingByNode[3] <= Empire.countdown) neighbors.push(passingByNode);
 				}
 
 				// If last node in the chain isn't of type "wait" and heuristics != 0 for passingBy or refueling
-				if(node[0] != 2 && neighbors[0] && neighbors[0][7] != 0){
+				if(node[0] != 2){
 					// Identify best nodes going up in wait times.
 					// Loop through this space.
 					for(let i = 1; i < (Empire.countdown-node[3]-1); i++){
 						// Build and add our wait node to the neighbors list.
-						let waitNode = [2, node[1], i, node[3]+i, getHitCount(node[1], node[3], node[3]+i)+node[4], MFalcon.autonomy, node[6]+1, getHeuristicRisk(node[1], node[3]+i), node];
+						let waitNode = [2, node[1], i, node[3]+i, getHitCount(node[1], node[3], node[3]+i)+node[4], MFalcon.autonomy, node[6]+1, await getHeuristicRisk(node[1], node[3]+i), node];
 						heap.push(waitNode);
 						// If heuristics == 0; we got a clear path to destination. No need to add more nodes.
 						if(waitNode[7] == 0) break;

@@ -83,18 +83,14 @@ var CliCall = async () => {
 			availableRoutes = (await BufferDb.selectRequest(`SELECT count(*) as cnt FROM routes WHERE db_and_mfalcon_config_md5=?`, [DbAndMFalconConfigHash]))[0].cnt;
 			await Toolbox.sleep(1000);
 		}
+		winston.log(`BufferDb has got ${availableRoutes} available routes for processing. Continuing.`);
 
-		winston.log(`BufferDb has got ${availableRoutes} available for processing. Continuing.`);
-
-		winston.log(`Pulling linksMap from db.`);
-		var rawLinksMap = (await BufferDb.selectRequest(`SELECT * FROM links_map WHERE db_and_mfalcon_config_md5=?`, [DbAndMFalconConfigHash]))[0].links_map;
-
-		winston.log(`Parsing linksMap from db.`);
-		var linksMap = JSON.parse(rawLinksMap);
-		winston.log(`LinksMap got ${linksMap.length} entries.`);
+		winston.log(`Opening universe database.`);
+		var UniverseDb = new Db();
+		await UniverseDb.openDb(DataSet.MFalcon.routes_db);
 
 		winston.log(`Intialising PathFinder from ${DataSet.MFalcon.departure} to ${DataSet.MFalcon.arrival} with an autonomy of ${DataSet.MFalcon.autonomy}`);
-		var pathFinder = new PathFinder(DataSet.MFalcon);
+		var pathFinder = new PathFinder(UniverseDb, DataSet.MFalcon);
 
 		winston.log(`Pulling available routes from buffer db.`);
 		var routes = await BufferDb.selectRequest(`SELECT * FROM routes WHERE db_and_mfalcon_config_md5=?`, [DbAndMFalconConfigHash]);
@@ -106,7 +102,7 @@ var CliCall = async () => {
 		winston.log(`Finding out the best available waypoints on the ${routes.length} available routes.`);
 		var routeList = [];
 		for(let i = 0; i < routes.length; i++){
-			let routeRes = await pathFinder.computeOptimalWaypoints(DataSet.Empire, routes[i].route.split('->'), linksMap);
+			let routeRes = await pathFinder.computeOptimalWaypoints(DataSet.Empire, routes[i].route.split('->'));
 			if(!routeRes) continue;
 
 			winston.log('Found a suitable route ! Adding it and sorting resulting array.');
@@ -170,17 +166,14 @@ var ApiCall = async () => {
 			if(!availableRoutes)
 				winston.log(`BufferDb has got no available routes for processing. Waiting...`);
 		}
-		winston.log(`BufferDb has got ${availableRoutes} available for processing. Continuing.`);
+		winston.log(`BufferDb has got ${availableRoutes} available routes for processing. Continuing.`);
 
-		winston.log(`Pulling linksMap from db.`);
-		var rawLinksMap = (await BufferDb.selectRequest(`SELECT * FROM links_map WHERE db_and_mfalcon_config_md5=?`, [DbAndMFalconConfigHash]))[0].links_map;
-
-		winston.log(`Parsing linksMap from db.`);
-		var linksMap = JSON.parse(rawLinksMap);
-		winston.log(`LinksMap got ${linksMap.length} entries.`);
+		winston.log(`Opening universe database.`);
+		var UniverseDb = new Db();
+		await UniverseDb.openDb(DataSet.MFalcon.routes_db);
 
 		winston.log(`Intialising PathFinder from ${DataSet.MFalcon.departure} to ${DataSet.MFalcon.arrival} with an autonomy of ${DataSet.MFalcon.autonomy}`);
-		var pathFinder = new PathFinder(DataSet.MFalcon);
+		var pathFinder = new PathFinder(UniverseDb, DataSet.MFalcon);
 
 		winston.log(`Pulling available routes from buffer db.`);
 		var routes = await BufferDb.selectRequest(`SELECT * FROM routes WHERE db_and_mfalcon_config_md5=?`, [DbAndMFalconConfigHash]);
@@ -189,10 +182,17 @@ var ApiCall = async () => {
 		for(let i = 0; i < routes.length; i++)
 			winston.log(routes[i].route);
 
+
+		winston.log(`Safeguarding with a soft timeout of ${SoftTimeoutSec} seconds.`);
+		var softTimeoutReached = false;
+		var softTimeoutHandle = setTimeout(() => { 
+			winston.log(`Hitted soft timeout of ${SoftTimeoutSec} seconds. Finishing current compute and returning what we got.`);
+			softTimeoutReached = true;
+		}, SoftTimeoutSec*1000);
 		winston.log(`Finding out the best available waypoints on the ${routes.length} available routes.`);
 		var routeList = [];
 		for(let i = 0; i < routes.length; i++){
-			let routeRes = await pathFinder.computeOptimalWaypoints(DataSet.Empire, routes[i].route.split('->'), linksMap);
+			let routeRes = await pathFinder.computeOptimalWaypoints(DataSet.Empire, routes[i].route.split('->'));
 			if(!routeRes) continue;
 
 			winston.log('Found a suitable route ! Adding it and sorting resulting array.');
@@ -202,6 +202,7 @@ var ApiCall = async () => {
 				var rBLastNode = rB[rB.length-1];
 				return (rALastNode.hitCount - rBLastNode.hitCount) || (rALastNode.travelTime - rBLastNode.travelTime);
 			});
+			if(softTimeoutReached) break;
 		}
 
 		winston.log(`Clearing hard timeout.`);
