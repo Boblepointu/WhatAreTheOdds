@@ -24,7 +24,6 @@ The app should be platform independent. Currently it has been tested on :
 ## Production dependencies
 
 - Install docker to your system.
-
 - Then :
 ```bash
 # Move into personnal dir
