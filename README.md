@@ -11,7 +11,7 @@ Han Solo, Chewbacca, Leia and C3PO are currently on Tatooine boarding on the Mil
 The Empire has hired the best bounty hunters in the galaxy to capture the Millenium Falcon and stop it from joining the rebel fleet...
 
 
-## ![](_readme_assets/mission_logo.png) Mission
+## Mission
 
 You can find the mission sheet with all implementation specifications [over there](./MISSION.md).
 
