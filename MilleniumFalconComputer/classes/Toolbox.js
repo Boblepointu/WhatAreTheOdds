@@ -1,3 +1,5 @@
+"use strict";
+
 module.exports = function(){
 	const Path = require('path');
 	const AppDir = Path.dirname(require.main.filename);	

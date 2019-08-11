@@ -74,10 +74,12 @@ module.exports = function(Db, MFalcon){
 		});
 	}
 
-	this.findRoutes = async cb => {
+	this.findRoutes = async (cb, fullSearch) => {
 		var winston = new Logger('PathFinder->findRoutes', 4);
 		try{
-			winston.log(`Finding out routes pathes.`);
+			winston.log(`Finding out ${(fullSearch) ? 'all' : 'direct'} routes pathes.`);
+			if(!fullSearch) fullSearch = false;
+			
 			var routesQueue = [ [MFalcon.departure] ];
 
 			// Simple adapted Djikstra.
@@ -94,7 +96,7 @@ module.exports = function(Db, MFalcon){
 					// Extracting the hop count for this destination
 					let neighborPlanetHopCount = linksMap[currRouteLastPlanet][neighborPlanet].hopToDestination;
 					// If hop count is superior or equal to current route; we head backward or laterally. Discarding this option.
-					// if(neighborPlanetHopCount >= currRouteHopCount && currRouteSecondLastPlanet) continue;
+					if(!fullSearch && neighborPlanetHopCount >= currRouteHopCount && currRouteSecondLastPlanet) continue;
 					// If current route already has this planet, we are looping. Discarding this option.
 					if(currRoute.indexOf(neighborPlanet) != -1) continue;
 					// Clone current route.
@@ -116,6 +118,8 @@ module.exports = function(Db, MFalcon){
 			}
 
 			winston.log(`${Object.keys(routes).length} routes found !`);
+
+			await this.findRoutes(cb, true);
 
 			return routes;
 		}catch(err){ throw err; }

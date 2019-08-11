@@ -41,7 +41,6 @@ docker run -p 3000:3000 whataretheodds:latest
 
 Millenium Falcon computer is designed to work with minimum dependency hassle. Here an how to :
 - Install `NodeJS>=10.15.3` and `Yarn>=1.12.3` on your system.
-
 - Then :
 ```bash
 # Move into personnal dir
@@ -102,7 +101,7 @@ docker run -p 3000:3000 -v /home/dataset:/app/MilleniumFalconComputer/dataset wh
 docker run -p 3000:3000 -v /home/config.json:/app/MilleniumFalconComputer/config.json whataretheodds:latest
 ```
 
-## Notes : 
+## Notes
 
 - You can place the `universe.db` wherever you want, as long as its path is well referenced into the `millenium-falcon.json` file.
 
@@ -110,12 +109,14 @@ docker run -p 3000:3000 -v /home/config.json:/app/MilleniumFalconComputer/config
 
 - As said before, a precalculation is done by the app at start. The biggest universes can't be fully explored, since we are playing on a NP-Complete problem. However, as time pass, more and more routes will be precalculated. It imply that on first start, you could have only one route to compute against. You must wait a few seconds/minute to get enough routes in buffer database to have a meaningfull result. Don't be afraid, with universes containing millions of entries it take roughly 10's of seconds to have a good enough sample.
 
+- One small case is not managed. When you got multiple routes linking two planets. A bounty hunter bypass could be hiding in the longer routes which are never used.
+
 ## Configuration
 
 You can configure the app as wished by setting a few environment variables.
 You can also hard set these variables into corresponding `config.json` files.
 
-### Api configuration ([./MilleniumFalconComputer/config.json](./MilleniumFalconComputer/config.json))
+### MilleniumFalconComputer configuration ([./MilleniumFalconComputer/config.json](./MilleniumFalconComputer/config.json))
 
 #### MaxSimultaneousComputation 
   - Config file entry : "MaxSimultaneousComputation"
@@ -169,4 +170,4 @@ You can also hard set these variables into corresponding `config.json` files.
   - Config file entry : "LogLevel"
   - Environment variable : LOG_LEVEL
   - Example value : 4
-  - Description : Given the nature of the app, loglevels must be managed to prevent output cluttering. Each level added will activate one 'functional' deeper. LogLevel 3 is advised; LogLevel 4 and 5 output way too much data.
+  - Description : Given the nature of the app, loglevels must be managed to prevent output cluttering. Each level added will activate one 'functional' deeper. LogLevel 4 is advised for small production server; LogLevel 3 for high usage production server; LogLevel 5 output way too much data, to use only for debug.

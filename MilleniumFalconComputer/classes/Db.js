@@ -1,14 +1,13 @@
 "use strict";
 
 module.exports = function(){
+	var MaxLogLevel = process.env.LOG_LEVEL || require('../config.json').LogLevel || 5;
 	var Logger = require('./Logger.js');
 	//var sqlite3 = require('sqlite3').verbose();
+	var winston = Logger(`DbReader`, 5);
 	var sqlite3 = require('better-sqlite3');
 	var db = null;
-	var verbose = null;
-	//var verbose = console.log;
-
-	var winston = Logger(`DbReader`, 5);
+	var verbose = (MaxLogLevel >= 5) ? winston.log : null;
 
 	this.createDb = filePath => {
 		return new Promise((resolve, reject) => {

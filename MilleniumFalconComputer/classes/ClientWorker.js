@@ -1,3 +1,5 @@
+"use strict";
+
 var ClientWorker = function(onError, onDone){
 	const Spawn = require('child_process').spawn;
 	const Path = require('path');
