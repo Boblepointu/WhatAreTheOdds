@@ -57,7 +57,7 @@ cd MilleniumFalconComputer && yarn run start
 
 ## Composition
 
-The app is composed of three block :
+The app is composed of two blocks :
 
 - The MilleniumFalconComputer : Serve the front application and relay compute requests to workers.
 - The C3PO : The frontend application. You talk to it, it find a way to get it right !
