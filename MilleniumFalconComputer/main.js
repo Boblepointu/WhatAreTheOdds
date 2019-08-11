@@ -51,9 +51,9 @@ var ValidateEverything = async () =>{
 	if(!Fs.existsSync(MFalconConfigPath))
 		badParamArray.push(`[back-client-worker.js] MFalconConfigPath is invalid. The file don't exist, or the path is invalid. Check either env var MFALCON_CONFIG_PATH or MFalconConfigPath entry in config.json`);
 	else winston.log(`+ MFalconConfigPath param ok`);
-	if(!Fs.existsSync(BufferDbPath))
+	/*if(!Fs.existsSync(BufferDbPath))
 		badParamArray.push(`[back-client-worker.js] BufferDbPath is invalid. The file don't exist, or the path is invalid. Check either env var BUFFER_DB_PATH or BufferDbPath entry in config.json`);
-	else winston.log(`+ BufferDbPath param ok`);
+	else winston.log(`+ BufferDbPath param ok`);*/
 
 	winston.log(`1.3 back-db-worker.js parameters`);
 
@@ -63,9 +63,9 @@ var ValidateEverything = async () =>{
 	if(!Fs.existsSync(MFalconConfigPath))
 		badParamArray.push(`[back-db-worker.js] MFalconConfigPath is invalid. The file don't exist, or the path is invalid. Check either env var MFALCON_CONFIG_PATH or MFalconConfigPath entry in config.json`);
 	else winston.log(`+ MFalconConfigPath param ok`);
-	if(!Fs.existsSync(BufferDbPath))
+	/*if(!Fs.existsSync(BufferDbPath))
 		badParamArray.push(`[back-db-worker.js] BufferDbPath is invalid. The file don't exist, or the path is invalid. Check either env var BUFFER_DB_PATH or BufferDbPath entry in config.json`);
-	else winston.log(`+ BufferDbPath param ok`);
+	else winston.log(`+ BufferDbPath param ok`);*/
 
 	if(badParamArray.length){
 		winston.error(`Some parameters are wrong. The app can't run in these conditions. Please clean parameters before going further. Here a list :`);
@@ -255,69 +255,79 @@ MMMMMMMMMMMMMMMMMMMMMWNKOxolc:::cloxO0KNWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM`);
 	console.log(``);
 	console.log(`=====Initialising Millenium Falcon computer=====`);
 	console.log(``);
+	try{
+		// First we validate each input, config and databases
+		await ValidateEverything();
 
-	// First we validate each input, config and databases
-	await ValidateEverything();
+		// Generating hashes
+		var MFalconConfigPath = process.env.MFALCON_CONFIG_PATH || Config.MFalconConfigPath || './dataset/millenium-falcon.json';
+		var MFalcon = require(MFalconConfigPath);
+		winston.log(`Generating universe db and Millenium Falcon hash.`);
+		var DbAndMFalconConfigHash = await Md5File(MFalcon.routes_db);
+		DbAndMFalconConfigHash = Md5(DbAndMFalconConfigHash+JSON.stringify([MFalcon.departure, MFalcon.arrival, MFalcon.autonomy]));
+		winston.log(`Db and Millenium Falcon hash is ${DbAndMFalconConfigHash}.`);
 
-	// Generating hashes
-	var MFalconConfigPath = process.env.MFALCON_CONFIG_PATH || Config.MFalconConfigPath || './dataset/millenium-falcon.json';
-	var MFalcon = require(MFalconConfigPath);
-	winston.log(`Generating universe db and Millenium Falcon hash.`);
-	var DbAndMFalconConfigHash = await Md5File(MFalcon.routes_db);
-	DbAndMFalconConfigHash = Md5(DbAndMFalconConfigHash+JSON.stringify([MFalcon.departure, MFalcon.arrival, MFalcon.autonomy]));
-	winston.log(`Db and Millenium Falcon hash is ${DbAndMFalconConfigHash}.`);
+		// We launch the DB worker and wait for a minimum of one route
+		var BufferDbPath = process.env.BUFFER_DB_PATH || Config.BufferDbPath || './dataset/buffer.db';
+		winston.log(`Initialising buffer database from ${BufferDbPath}.`);
+		var BufferDb = new Db();
+		
+		// Populating BufferDb if not existing
+		if(!Fs.existsSync(BufferDbPath)){
+			winston.log(`BufferDb does not exist. Creating and populating.`)
+			await BufferDb.createDb(BufferDbPath);
+			await BufferDb.execMultipleRequest(Fs.readFileSync('./buffer.db.sql', 'utf8'));
+		}else await BufferDb.openDb(BufferDbPath);
+		
+		winston.log(`Executing BackDbWorker.`);
+		var backDbWorker;
 
-	// We launch the DB worker and wait for a minimum of one route
-	var BufferDbPath = process.env.BUFFER_DB_PATH || Config.BufferDbPath || './dataset/buffer.db';
-	winston.log(`Initialising buffer database from ${BufferDbPath}.`);
-	var BufferDb = new Db();
-	await BufferDb.openDb(BufferDbPath);
+		var onError = err => {
+			winston.error('BackDbWorker died prematurily.');
+			backDbWorker.removeListener('error', onError);
+			backDbWorker.removeListener('done', onDone);
+		};
+		var onDone = routes => { 
+			winston.log(`BackDbWorker gracefully closed. All routes in this universe has been found !`);
+			backDbWorker.removeListener('error', onError);
+			backDbWorker.removeListener('done', onDone);
+		};
 
-	winston.log(`Executing BackDbWorker.`);
-	var backDbWorker;
+		backDbWorker = new DbWorker(onError, onDone);
+		await backDbWorker.spawn();
 
-	var onError = err => {
-		winston.error('BackDbWorker died prematurily.');
-		backDbWorker.removeListener('error', onError);
-		backDbWorker.removeListener('done', onDone);
-	};
-	var onDone = routes => { 
-		winston.log(`BackDbWorker gracefully closed. All routes in this universe has been found !`);
-		backDbWorker.removeListener('error', onError);
-		backDbWorker.removeListener('done', onDone);
-	};
+		winston.log(`BackDbWorker spawned.`);
 
-	backDbWorker = new DbWorker(onError, onDone);
-	await backDbWorker.spawn();
+		winston.log(`Polling BufferDb until we got a result from back db worker.`);
+		var availableRoutes = 0;
+		while(!availableRoutes){
+			availableRoutes = (await BufferDb.selectRequest(`SELECT count(*) as cnt FROM routes WHERE db_and_mfalcon_config_md5=?`, [DbAndMFalconConfigHash]))[0].cnt;
+			await Toolbox.sleep(1000);
+		}
 
-	winston.log(`BackDbWorker spawned.`);
+		winston.log(`BufferDb has got ${availableRoutes} available routes for processing. Continuing.`);
 
-	winston.log(`Polling BufferDb until we got a result from back db worker.`);
-	var availableRoutes = 0;
-	while(!availableRoutes){
-		availableRoutes = (await BufferDb.selectRequest(`SELECT count(*) as cnt FROM routes WHERE db_and_mfalcon_config_md5=?`, [DbAndMFalconConfigHash]))[0].cnt;
-		await Toolbox.sleep(1000);
+		// We launch API
+		winston.log(`Executing BackApiWorker.`);
+		var apiDbWorker;
+
+		var onError = err => {
+			winston.error('BackApiWorker died prematurily.');
+			backDbWorker.removeListener('error', onError);
+			backDbWorker.removeListener('done', onDone);
+		};
+		var onDone = routes => { 
+			winston.log(`BackApiWorker gracefully closed. All routes in this universe has been found !`);
+			backDbWorker.removeListener('error', onError);
+			backDbWorker.removeListener('done', onDone);
+		};
+
+		apiDbWorker = new ApiWorker(onError, onDone);
+		await apiDbWorker.spawn();
+	}catch(err){
+		console.log('FATAL --->');
+		console.log(err);
 	}
-
-	winston.log(`BufferDb has got ${availableRoutes} available for processing. Continuing.`);
-
-	// We launch API
-	winston.log(`Executing BackApiWorker.`);
-	var apiDbWorker;
-
-	var onError = err => {
-		winston.error('BackApiWorker died prematurily.');
-		backDbWorker.removeListener('error', onError);
-		backDbWorker.removeListener('done', onDone);
-	};
-	var onDone = routes => { 
-		winston.log(`BackApiWorker gracefully closed. All routes in this universe has been found !`);
-		backDbWorker.removeListener('error', onError);
-		backDbWorker.removeListener('done', onDone);
-	};
-
-	apiDbWorker = new ApiWorker(onError, onDone);
-	await apiDbWorker.spawn();
 }
 
 main();

@@ -10,7 +10,7 @@ module.exports = function(){
 	this.createDb = filePath => {
 		return new Promise((resolve, reject) => {
 			winston.log(`Creating database at ${filePath}.`);
-			db = new sqlite3.Database(filePath, sqlite3.OPEN_CREATE, function(err){
+			db = new sqlite3.Database(filePath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, function(err){
 				if(err){ 
 					winston.error(`Error creating database at ${filePath}.`);
 					reject(err);
@@ -48,6 +48,22 @@ module.exports = function(){
 					}
 					resolve();
 				})
+			}catch(err){ reject(err); }
+		});
+	}
+
+	this.execMultipleRequest = (req) => {
+		return new Promise((resolve, reject) => {
+			try{
+				winston.log(`Executing select request ${(req.length <= 30) ? req : req.substring(0, 30)+'[..]'+req.substring(req.length-30)}.`);
+				db.exec(req, function(err, rows){
+					if(err){
+						winston.error(`Error querying database with request "${req}" and params "${params.join(', ')}".`);
+						reject(err);
+						return;
+					}
+					resolve(rows);
+				});
 			}catch(err){ reject(err); }
 		});
 	}

@@ -146,7 +146,7 @@ var ApiCall = async () => {
 			process.exit();
 		}, HardTimeoutSec*1000);
 
-		winston.log(`Signalling to the API that we are ready to recive empire data.`);
+		winston.log(`Signalling to the API that we are ready to receive empire data.`);
 		process.once('message', empireIntel => { winston.log(`Got empire intel data.`); DataSet.Empire = empireIntel; });
 		process.send('ready');
 
@@ -154,7 +154,7 @@ var ApiCall = async () => {
 		var timeoutHandle = setTimeout(() => {
 			winston.error(`Timeout waiting for ipc input from the api. Killed.`);
 			process.exit();
-		}, 5000);	
+		}, 5000);
 
 		winston.log(`Waiting for the client empire intel.`);
 		while(!DataSet.Empire) await Toolbox.sleep(50);

@@ -170,9 +170,9 @@ The application should display 0% as The Millenium Falcon cannot go from Tatooin
 {
   "countdown": 8, 
   "bounty_hunters": [
-    {"planet": "Hoth", "day": 6 }, 
-    {"planet": "Hoth", "day": 7 },
-    {"planet": "Hoth", "day": 8 }
+    { "planet": "Hoth", "day": 6 }, 
+    { "planet": "Hoth", "day": 7 },
+    { "planet": "Hoth", "day": 8 }
   ]
 }
 ```
@@ -199,9 +199,9 @@ The application should display 81% as The Millenium Falcon can go from Tatooine 
 {
   "countdown": 9, 
   "bounty_hunters": [
-    {"planet": "Hoth", "day": 6 }, 
-    {"planet": "Hoth", "day": 7 },
-    {"planet": "Hoth", "day": 8 }
+    { "planet": "Hoth", "day": 6 }, 
+    { "planet": "Hoth", "day": 7 },
+    { "planet": "Hoth", "day": 8 }
   ]
 }
 ```
@@ -229,9 +229,9 @@ The application should display 90% as The Millenium Falcon can go from Tatooine 
 {
   "countdown": 10, 
   "bounty_hunters": [
-    {"planet": "Hoth", "day": 6 }, 
-    {"planet": "Hoth", "day": 7 },
-    {"planet": "Hoth", "day": 8 }
+    { "planet": "Hoth", "day": 6 }, 
+    { "planet": "Hoth", "day": 7 },
+    { "planet": "Hoth", "day": 8 }
   ]
 }
 ```
