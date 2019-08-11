@@ -174,7 +174,7 @@ module.exports = function(Db, MFalcon){
 				for(let i = startIndex; i < route.length; i++)
 					if(route[i+1])
 						timeToDestination += await getLinkDistance(route[i], route[i+1]);
-				timeToDestination = timeToDestination + Math.round(timeToDestination/MFalcon.autonomy);
+				timeToDestination = timeToDestination; //+ Math.round(timeToDestination/MFalcon.autonomy);
 				return timeToDestination;
 			}
 
@@ -224,6 +224,11 @@ module.exports = function(Db, MFalcon){
 
 				// If we got a full path; end here.
 				if(node[1] == MFalcon.arrival){
+
+					// @TODO reduce step by step every waitTime in path until none
+					// Keep lowest travelTime with equal hitcount
+					// /@TODO
+
 					// Reconstructing our path from last found node.
 					let path = reconstruct(node);
 					// Reconstructing a verbose path. We don't need performance anymore.
@@ -255,30 +260,33 @@ module.exports = function(Db, MFalcon){
 				// If we havn't got needed fuel to go to next planet; add a refuel node to neighbors.
 				if(node[5] < nextPlanetDistance){
 					let refuelNode = [1, node[1], 1, node[3]+1, getHitCount(node[1], node[3]+1, node[3]+1)+node[4], MFalcon.autonomy, node[6]+1, await getHeuristicRisk(node[1], node[3]+1), node];
-					if(refuelNode[3] <= Empire.countdown) neighbors.push(refuelNode);
+					neighbors.push(refuelNode);
 				} 
 				// Else, add next planet to the neighbors list.
 				else {
 					let passingByNode = [0, nextPlanet, nextPlanetDistance, node[3]+nextPlanetDistance, getHitCount(nextPlanet, node[3]+nextPlanetDistance, node[3]+nextPlanetDistance)+node[4], node[5]-nextPlanetDistance, node[6]+1, await getHeuristicRisk(node[1], node[3]+nextPlanetDistance), node];
-					if(passingByNode[3] <= Empire.countdown) neighbors.push(passingByNode);
+					neighbors.push(passingByNode);
 				}
 
 				// If last node in the chain isn't of type "wait" and heuristics != 0 for passingBy or refueling
 				if(node[0] != 2 && neighbors[0] && neighbors[0][7] != 0){
 					// Identify best nodes going up in wait times.
 					// Loop through this space.
-					for(let i = 1; i < (Empire.countdown-node[3]-1); i++){
+					for(let i = 1; i < (Empire.countdown); i++){
 						// Build and add our wait node to the neighbors list.
 						let waitNode = [2, node[1], i, node[3]+i, getHitCount(node[1], node[3], node[3]+i)+node[4], MFalcon.autonomy, node[6]+1, await getHeuristicRisk(node[1], node[3]+i), node];
-						if(waitNode[3] <= Empire.countdown) neighbors.push(waitNode);
+						neighbors.push(waitNode);
 						// If heuristics == 0; we got a clear path to destination. No need to add more nodes.
 						if(waitNode[7] == 0) break;
 					}
 				}
 
-				heap = heap.concat(neighbors);
+				for(let i = 0; i < neighbors.length; i++)
+					if(neighbors[i][3]+(await getTimeToDestination(neighbors[i][1])) <= Empire.countdown)
+						heap.push(neighbors[i]);
+
 				// Sort the heap, hitcount then heuristics then traveltime then refueling and passingBy over waiting.
-				heap.sort((nA, nB) => (nA[4] - nB[4]) || (nA[7] - nB[7]) || (nB[3] - nA[3]) || (nA[0] - nB[0]));
+				heap.sort((nA, nB) => (nA[4] - nB[4]) || (nA[7] - nB[7]) || (nA[3] - nB[3]) || (nA[0] - nB[0]));
 			}
 
 			winston.warn(`Cannot find a valid path ! Route is ${route.join('->')} and empire countdown ${Empire.countdown} days.`);
