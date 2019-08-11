@@ -254,12 +254,29 @@ var FormatResult = route => {
 
 	// Generating route identifier
 	var identifierArray = [];
+	var currIdentifierArray = [];
 	for(let i = 0; i < route.length; i++){
+		let lastStep = route[i-1];
 		let currStep = route[i];
-		if(currStep.type == "passingBy") identifierArray.push(currStep.planet);
-		if(currStep.type == "refueling") identifierArray[identifierArray.length-1] += "[R]";
-		if(currStep.type == "waiting") identifierArray[identifierArray.length-1] += `[W${currStep.duration}]`;
+
+		if(currIdentifierArray[0] && currIdentifierArray[0] != currStep.planet){
+			currIdentifierArray[1] += `${lastStep.travelTime})`;
+			identifierArray.push(currIdentifierArray.join(''));
+			currIdentifierArray = [];
+		}
+
+		if(currStep.type == "passingBy"){
+			currIdentifierArray.push(currStep.planet);
+			currIdentifierArray.push(`(dayIn:${currStep.travelTime};dayOut:`);
+			if(!route[i+1]){
+				currIdentifierArray.push(`${currStep.travelTime})`);
+				identifierArray.push(currIdentifierArray.join(''));
+			}
+		}
+		else if(currStep.type == "refueling") currIdentifierArray.push(`[R]`);
+		else if(currStep.type == "waiting") currIdentifierArray.push(`[W${currStep.duration}]`);
 	}
+
 	formattedRoute.identifier = identifierArray.join('->');
 
 	return formattedRoute;
