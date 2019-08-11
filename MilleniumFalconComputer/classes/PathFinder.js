@@ -119,7 +119,8 @@ module.exports = function(Db, MFalcon){
 
 			winston.log(`${Object.keys(routes).length} routes found !`);
 
-			await this.findRoutes(cb, true);
+			if(!fullSearch)
+				await this.findRoutes(cb, true);
 
 			return routes;
 		}catch(err){ throw err; }
@@ -263,21 +264,21 @@ module.exports = function(Db, MFalcon){
 				}
 
 				// If last node in the chain isn't of type "wait" and heuristics != 0 for passingBy or refueling
-				if(node[0] != 2){
+				if(node[0] != 2 && neighbors[0] && neighbors[0][7] != 0){
 					// Identify best nodes going up in wait times.
 					// Loop through this space.
 					for(let i = 1; i < (Empire.countdown-node[3]-1); i++){
 						// Build and add our wait node to the neighbors list.
 						let waitNode = [2, node[1], i, node[3]+i, getHitCount(node[1], node[3], node[3]+i)+node[4], MFalcon.autonomy, node[6]+1, await getHeuristicRisk(node[1], node[3]+i), node];
-						heap.push(waitNode);
+						if(waitNode[3] <= Empire.countdown) neighbors.push(waitNode);
 						// If heuristics == 0; we got a clear path to destination. No need to add more nodes.
 						if(waitNode[7] == 0) break;
 					}
 				}
 
 				heap = heap.concat(neighbors);
-				// Sort the heap, hitcount then heuristics then traveltime then refueling over waiting.
-				heap.sort((nA, nB) => (nA[4] - nB[4]) || (nA[7] - nB[7]) || (nA[3] - nB[3]) || (nA[0] - nB[0]));
+				// Sort the heap, hitcount then heuristics then traveltime then refueling and passingBy over waiting.
+				heap.sort((nA, nB) => (nA[4] - nB[4]) || (nA[7] - nB[7]) || (nB[3] - nA[3]) || (nA[0] - nB[0]));
 			}
 
 			winston.warn(`Cannot find a valid path ! Route is ${route.join('->')} and empire countdown ${Empire.countdown} days.`);
