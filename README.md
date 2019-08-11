@@ -135,8 +135,14 @@ You can also hard set these variables into corresponding `config.json` files.
 #### MFalconConfigPath
   - Config file entry : "MFalconConfigPath"
   - Environment variable : MFALCON_CONFIG_PATH
-  - Example value : "./dataset/live/millenium-falcon.json"
+  - Example value : "./dataset/millenium-falcon.json"
   - Description : Path of the `millenium-falcon.json` file.
+
+#### BufferDbPath
+  - Config file entry : "BufferDbPath"
+  - Environment variable : BUFFER_DB_PATH
+  - Example value : "./dataset/buffer.db"
+  - Description : Path of the `buffer.db` database. If it don't exist, will be generated automatically.
 
 #### HardTimeoutSec
   - Config file entry : "HardTimeoutSec"
