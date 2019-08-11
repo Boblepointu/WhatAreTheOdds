@@ -7,7 +7,7 @@ var DbWorker = function(onError, onDone){
 	
 	var childHandler;
 
-	var dataListener = data => { console.log(data.toString().replace(/\n$/, "")); };
+	var dataListener = data => { /*console.log(data.toString().replace(/\n$/, ""));*/ };
 	var closeListener = code => {
 		winston.log(`DbWorker process exited.`);
 

@@ -1,41 +1,9 @@
 {
-  "countdown": 10000000,
-  "bounty_hunters": [
-    {
-      "planet": "Sauerpatnam",
-      "day": 5
-    },
-    {
-      "planet": "P3",
-      "day": 15
-    },
-    {
-      "planet": "P2",
-      "day": 11
-    },
-    {
-      "planet": "P1",
-      "day": 3
-    },
-    {
-      "planet": "P2",
-      "day": 15
-    },
-    {
-      "planet": "P1",
-      "day": 7
-    },
-    {
-      "planet": "P0",
-      "day": 14
-    },
-    {
-      "planet": "P0",
-      "day": 1
-    },
-    {
-      "planet": "P0",
-      "day": 15
-    }
-  ]
+	"countdown": 20,
+	"bounty_hunters": [
+		{
+		"planet": "Harberrainafacilis",
+		"day": 3
+		}
+	]
 }
