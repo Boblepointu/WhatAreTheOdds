@@ -1,3 +1,5 @@
+![](_readme_assets/starwars_logo.png)
+
 # WhatAreTheOdds
 A long time ago in a galaxy far, far away...
 
