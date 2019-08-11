@@ -18,7 +18,7 @@ The app should be platform independent. Currently it has been tested on :
 -  `Linux debian 4.9.0-9-amd64 #1 SMP Debian 4.9.168-1+deb9u2 (2019-05-13) x86_64 GNU/Linux`
   - With `Yarn v1.12.3` and `Node v10.15.3`
 - `Windows 10 Entreprise LTSC - build 1809 - version 17763.503`
-  - With `Yarn v1.12.3` and `Node v12.4.0`
+  - With `Yarn v1.12.3`, `Node v12.4.0` and `git bash` for console (should work with cygwin & co)
 
   
 ## Production dependencies
@@ -106,7 +106,7 @@ Notes :
 You can configure the app as wished by setting a few environment variables.
 You can also hard set these variables into corresponding `config.json` files.
 
-### Api configuration ([./back-api/config.json](./back-api/config.json))
+### Api configuration ([./MilleniumFalconComputer/config.json](./MilleniumFalconComputer/config.json))
 
 #### MaxSimultaneousComputation 
   - Config file entry : "MaxSimultaneousComputation"
