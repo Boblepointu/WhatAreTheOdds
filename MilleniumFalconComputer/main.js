@@ -2,7 +2,6 @@
 
 const Logger = require('./classes/Logger.js');
 const Toolbox = new (require('./classes/Toolbox.js'))();
-const Config = require('./config.json');
 const Db = require('./classes/Db.js');
 const DbWorker = require('./classes/DbWorker.js');
 const ApiWorker = require('./classes/ApiWorker.js');
@@ -10,6 +9,8 @@ const Validator = new (require('./classes/Validator.js'))();
 const Fs = require("fs");
 const Md5File = require('md5-file/promise');
 const Md5 = require('md5');
+
+const Params = Toolbox.getAppParams();
 
 var main = async () => {
 	var winston = Logger(`Main`, 1);
@@ -23,21 +24,19 @@ var main = async () => {
 		// First we validate each input, config and databases
 		await Validator.validateAllInputs();
 
-		var MFalconConfigPath = process.env.MFALCON_CONFIG_PATH || Config.MFalconConfigPath || './dataset/millenium-falcon.json';
-		var MFalcon = require(MFalconConfigPath);
+		var MFalcon = require(Params.MFalconConfigPath);
 
 		// We launch the DB worker and wait for a minimum of one route
-		var BufferDbPath = process.env.BUFFER_DB_PATH || Config.BufferDbPath || './dataset/buffer.db';
-		winston.log(`Initialising buffer database from ${BufferDbPath}.`);
+		winston.log(`Initialising buffer database from ${Params.BufferDbPath}.`);
 		var BufferDb = new Db();
 		
-		// Creating, populating BufferDb if not existing
-		if(!Fs.existsSync(BufferDbPath)){
+		// Creating, opening, populating BufferDb if not existing
+		if(!Fs.existsSync(Params.BufferDbPath)){
 			winston.log(`BufferDb does not exist. Creating and populating.`)
-			await BufferDb.createDb(BufferDbPath);
-			await BufferDb.openDb(BufferDbPath);
+			await BufferDb.createDb(Params.BufferDbPath);
+			await BufferDb.openDb(Params.BufferDbPath);
 			await BufferDb.execMultipleRequest(Fs.readFileSync('./buffer.db.sql', 'utf8'));
-		}else await BufferDb.openDb(BufferDbPath);
+		}else await BufferDb.openDb(Params.BufferDbPath);
 		
 		// Creating indexes on UniverseDb
 		winston.log(`Opening UniverseDb from ${MFalcon.routes_db}.`);
@@ -84,7 +83,6 @@ var main = async () => {
 		winston.log(`Closing BufferDb.`);
 		await BufferDb.closeDb();
 
-		// We launch API
 		winston.log(`Executing BackApiWorker.`);
 		var apiDbWorker;
 

@@ -148,7 +148,7 @@ You can also hard set these variables into [./MilleniumFalconComputer/config.jso
   - Config file entry : "MFalconConfigPath"
   - Environment variable : MFALCON_CONFIG_PATH
   - Example value : "./dataset/millenium-falcon.json"
-  - Description : Path of the `millenium-falcon.json` file.
+  - Description : Path of the `millenium-falcon.json` file. Must be relative to `MilleniumFalconComputer` folder.
 
 #### BufferDbPath
   - Config file entry : "BufferDbPath"
