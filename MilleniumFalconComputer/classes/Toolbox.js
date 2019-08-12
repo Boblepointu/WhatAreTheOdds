@@ -4,265 +4,62 @@ module.exports = function(){
 	const Path = require('path');
 	const AppDir = Path.dirname(require.main.filename);	
 	const Logger = require('./Logger.js');
+	const Config = require('../config.json');
 	const winston = new Logger('Toolbox');
 
-	this.sleep = function(ms){
-		return new Promise((resolve, reject) => {
-			setTimeout(resolve, ms);
-		});
+	this.getAppParams = () => {
+		var params = {};
+		params.Port = (parseInt(process.env.PORT, 10) || process.env.PORT) || Config.Port || 3000;
+		params.MaxSimultaneousComputation = (parseInt(process.env.MAX_SIMULTANEOUS_COMPUTATION, 10) || process.env.MAX_SIMULTANEOUS_COMPUTATION) || Config.MaxSimultaneousComputation || 10;
+		params.AllowAllAccessControlOrigins = (parseInt(process.env.ALLOW_ALL_ACCESS_CONTROL_ORIGIN, 10) || process.env.ALLOW_ALL_ACCESS_CONTROL_ORIGIN) || Config.AllowAllAccessControlOrigins || false;
+		params.MaxSentRouteToClient = (parseInt(process.env.MAX_SENT_ROUTE_TO_CLIENT, 10) || process.env.MAX_SENT_ROUTE_TO_CLIENT) || Config.MaxSentRouteToClient || 10;
+		params.HardTimeoutSec = (parseInt(process.env.HARD_TIMEOUT_SEC, 10) || process.env.HARD_TIMEOUT_SEC) || Config.HardTimeoutSec || 60;
+		params.SoftTimeoutSec = (parseInt(process.env.SOFT_TIMEOUT_SEC, 10) || process.env.SOFT_TIMEOUT_SEC) || Config.SoftTimeoutSec || 30;
+		params.MFalconConfigPath = process.env.MFALCON_CONFIG_PATH || Config.MFalconConfigPath || './dataset/millenium-falcon.json';
+		params.BufferDbPath = process.env.BUFFER_DB_PATH || Config.BufferDbPath || './dataset/buffer.db';	
+		return params;
 	}
 
-	this.readData = async function(mFalconPath){
-		var mFalcon = require(Path.join(AppDir, mFalconPath));
-		return {
-			MFalcon: mFalcon/*,
-			Universe: await (new DbReader()).readRouteEntries(mFalcon.routes_db)*/
-		}
-	}
+	this.sleep = ms => (new Promise((resolve, reject) => setTimeout(resolve, ms)));
 
-	this.areInputsValid = function(Empire, MFalcon, Universe){
-		if(!Universe){
-			winston.error('No Universe parameters given !');
-			return false;
-		}
-		for(var i in Universe){
-			if(!Universe[i].origin){
-				winston.error('No origin column in universe db !');
-				return false;
-			}
-			if(typeof Universe[i].origin != "string"){
-				winston.error('Origin column in universe db isn\'t yielding strings !');
-				return false;
-			}		
-			if(!Universe[i].destination){
-				winston.error('No destination column in universe db !');
-				return false;
-			}
-			if(typeof Universe[i].destination != "string"){
-				winston.error('Destination column in universe db isn\'t yielding strings !');
-				return false;
-			}		
-			if(!Universe[i].travel_time){
-				winston.error('No travel_time column in universe db !');
-				return false;
-			}		
-			if(!Number.isInteger(Universe[i].travel_time)){
-				winston.error('Travel time column in db isn\'t yielding integers !');
-				return false;
-			}
-		}
+	this.displayMFalcon = () => console.log(`
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWXklcdXMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNKko:'.   ,xXMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWXOdc,.         .oNMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWN0xol;.             'dXWMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMWKko:'.                'dXMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMWXOdc,.                   'dXWMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMWX0xl;.                      'dXMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMN0xl;..                        'dXWMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMW0l,.                           'dXMMMMMMMMMMMMMMMMMMMMMMWWMMMM
+MMMMMMMMMMMMO'                            'oXWMMWXkONMMMMMMMMMMMMMMNk:;xXMM
+MMMMMMMMMMMWd.                          'oXMMMWXd' .;kNMMMMMMMMMMNk;    ,kW
+MMMMMMMMMWO:.                         'dXWMMMXd'      ;OWMMMMMMNk;       :X
+MMMMWXKKk:.                        'dOXMMMMXd'        .dNMMMMNk;        .kW
+MMMKc...                         'dXWMMMMXd'        .c0WMMMNk;         .dWM
+MM0;                           'dXMMMMWXd'        .c0WMMMNk;          .oNMM
+MK;                      .';:lxXWMMMXOd'        .c0WMMMNk;            cXMMM
+Xc                    .:x0NWMMMMMMMMKkl.      .c0WMMMNk;             :KMMMM
+d.                  .lKWMMMMWNNNWMMMMMWXo.  .c0WMMMNk;              ,0MMMMM
+,                  ,OWMMMNkl;,'';lxXWMMMW0ll0WMMMNk;               'OMMMMMM
+.                 '0MMMWk,         'xKNMMMWWMMMNk;                .kNKOkOXW
+                 .dWMMWk.           .'dWMMMMMNk;                 .lx:.   .o
+                 .OMMMN:              ;KMMMWO;                   .'        
+                 .kMMMNl              :XMMM0'                             .
+                  lNMMMK;           ,lOMMMWo.                           .;O
+.                 .dNMMMXd,.      'oKWWMMWk.                          .;kNM
+c                  .lXMMMMN0xooox0NMMMMMXd.                         .;kNMMM
+O.                   'oKWMMMMMMMMMMMWNKd,                    .....':kNMMMMM
+Wd.                    .;lxOKXXXK0xo;'.                     lXNNNXNWMMMMMMM
+MNo.                        .....                          cXMMMMMMMMMMMMMM
+MMNo.                                                    .lXMMMMMMMMMMMMMMM
+MMMNx'                                               '::ckNMMMMMMMMMMMMMMMM
+MMMMWKc.                                           ,xXMMMMMMMMMMMMMMMMMMMMM
+MMMMMMNk;                                        'xXMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMNk:.                                    .xWMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMW0o,.                                .;0MMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMN0d:..                         .;oONMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMWX0xl:,..           ...';ldOXWMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMWNKOxolc:::cloxO0KNWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM`);
 
-		if(!MFalcon){
-			winston.error('No MFalcon parameters given !');
-			return false;		
-		}
-
-		if(!MFalcon.departure){
-			winston.error('No departure entry in MFalcon data !');
-			return false;		
-		}
-
-		if(typeof MFalcon.departure != "string"){
-			winston.error('Departure entry in MFalcon data is not a string !');
-			return false;		
-		}	
-
-		if(!MFalcon.arrival){
-			winston.error('No arrival entry in MFalcon data !');
-			return false;		
-		}
-
-		if(typeof MFalcon.arrival != "string"){
-			winston.error('Arrival entry in MFalcon data is not a string !');
-			return false;		
-		}
-
-		if(!MFalcon.routes_db){
-			winston.error('No routes_db entry in MFalcon data !');
-			return false;		
-		}
-
-		if(!MFalcon.autonomy){
-			winston.error('No autonomy entry in MFalcon data !');
-			return false;		
-		}
-
-		if(!Number.isInteger(MFalcon.autonomy)){
-			winston.error('Autonomy entry in MFalcon data is not an integer !');
-			return false;		
-		}	
-
-		if(!Empire){
-			winston.error('No Empire intel given !');
-			return false;
-		}
-		if(!Empire.countdown){
-			winston.error('To compute, we need data about the empire countdown.');
-			return false;
-		}
-		if(!Number.isInteger(Empire.countdown)){
-			winston.error('The given countdown isn\'t an integer !');
-			return false;
-		}
-		if(!Empire.bounty_hunters){
-			winston.error('Bounty hunters intel is necessary, even as an empty array.');
-			return false;
-		}
-		if(Empire.bounty_hunters){
-			if(!Array.isArray(Empire.bounty_hunters)){
-				winston.error('Bounty hunters intel is not presented as an array.');
-				return false;
-			}
-			for(var i in Empire.bounty_hunters){
-				if(!Empire.bounty_hunters[i].planet){
-					winston.error('Every bounty hunters intel need a planet.');
-					return false;
-				}
-				if(typeof Empire.bounty_hunters[i].planet != "string"){
-					winston.error('All bounty hunter planet arguments must be a string !');
-					return false;
-				}
-				if(!Number.isInteger(Empire.bounty_hunters[i].day)){
-					winston.error('All bounty hunter day arguments must be an integer !');
-					return false;
-				}				
-				if(!Empire.bounty_hunters[i].day && Empire.bounty_hunters[i].day != 0){
-					winston.error('Every bounty hunters intel need a day.');
-					return false;
-				}
-				try{ parseInt(Empire.bounty_hunters[i].day); }
-				catch(err){
-					winston.error('The day parameter of every bounty hunters intel must be given as an int.');
-					return false;
-				}
-				if(Empire.bounty_hunters[i].day < 0){
-					winston.error('The day parameter of every bounty hunters intel must be positive.');
-					return false;
-				}			
-				if(typeof Empire.bounty_hunters[i].planet != "string"){
-					winston.error('The planet parameter of every bounty hunters intel must be given as a string.');
-					return false;
-				}
-				if(Empire.bounty_hunters[i].planet.length == 0){
-					winston.error('The planet parameter of every bounty hunters intel must have more than 0 character.');
-					return false;
-				}			
-			}
-		}
-		return true;
-	}
-
-	this.areAppArgumentsValid = function(HeapSizeLevel1, HeapSizeLevel2, Depth, MFalconConfigPath, HardTimeoutSec, SoftTimeoutSec){
-		try{
-			if(!Number.isInteger(HeapSizeLevel1)){
-				winston.error(`HeapSizeLevel1 must be an integer. Got ${HeapSizeLevel1}.`);
-				return false;
-			}
-			if(!Number.isInteger(HeapSizeLevel2)){
-				winston.error(`HeapSizeLevel2 must be an integer. Got ${HeapSizeLevel2}.`);
-				return false;
-			}
-			if(!Number.isInteger(Depth)){
-				winston.error(`Depth must be an integer. Got ${Depth}.`);
-				return false;
-			}
-			if(typeof MFalconConfigPath != "string"){
-				winston.error(`Depth must be a string. Got ${MFalconConfigPath}.`);
-				return false;
-			}
-			if(!Number.isInteger(HardTimeoutSec)){
-				winston.error(`HardTimeoutSec must be an integer. Got ${HardTimeoutSec}.`);
-				return false;
-			}
-			if(!Number.isInteger(SoftTimeoutSec)){
-				winston.error(`SoftTimeoutSec must be an integer. Got ${SoftTimeoutSec}.`);
-				return false;
-			}
-
-			return true;
-		}catch(err){ throw err; }
-	}
-
-	this.areEmpireIntelValid = function(Empire){
-		return new Promise((resolve, reject) => {
-			try{
-				if(!Empire){
-					reject('No parameters given !');
-					return;
-				}
-				if(!Empire.countdown){
-					reject('To compute, we need data about the empire countdown.');
-					return;
-				}
-				if(Empire.countdown){
-					try{ parseInt(Empire.countdown); }
-					catch(err){
-						reject('The given countdown isn\'t an integer !');
-						return;
-					}
-				}
-				if(!Empire.bounty_hunters){
-					reject('Bounty hunters intel is necessary, even as an empty array.');
-					return;
-				}
-				if(Empire.bounty_hunters){
-					if(!Array.isArray(Empire.bounty_hunters)){
-						reject('Bounty hunters intel is not presented as an array.');
-						return;
-					}
-					for(var i in Empire.bounty_hunters){
-						if(!Empire.bounty_hunters[i].planet){
-							reject('Every bounty hunters intel need a planet.');
-							return;
-						}
-						if(typeof Empire.bounty_hunters[i].planet != "string"){
-							reject('All bounty hunter planet arguments must be a string !');
-							return;
-						}
-						if(!Number.isInteger(Empire.bounty_hunters[i].day)){
-							reject('All bounty hunter day arguments must be an integer !');
-							return;
-						}
-						if(Empire.bounty_hunters[i].day === undefined){
-							reject('Every bounty hunters intel need a day.');
-							return;
-						}						
-						if(!Number.isInteger(Empire.bounty_hunters[i].day)){
-							reject('The day parameter of every bounty hunters intel must be given as an int.');
-							return;
-						}
-						if(Empire.bounty_hunters[i].day < 0){
-							reject('The day parameter of every bounty hunters intel must be positive.');
-							return;
-						}			
-						if(typeof Empire.bounty_hunters[i].planet != "string"){
-							reject('The planet parameter of every bounty hunters intel must be given as a string.');
-							return;
-						}
-						if(Empire.bounty_hunters[i].planet.length == 0){
-							reject('The planet parameter of every bounty hunters intel must have more than 0 character.');
-							return;
-						}			
-					}
-				}
-				resolve();
-			}catch(err){ reject(err); }
-		});
-	}
-
-	this.sanitizeEmpireIntel = function(Empire){
-		try{
-			var sanitized = {};
-
-			sanitized.countdown = Empire.countdown;
-			sanitized.bounty_hunters = [];
-			for(var i in Empire.bounty_hunters)
-				sanitized.bounty_hunters.push({
-					planet: Empire.bounty_hunters[i].planet
-					, day: Empire.bounty_hunters[i].day
-				});
-
-			return sanitized;
-		}catch(err){ throw err; }
-	}		
 }

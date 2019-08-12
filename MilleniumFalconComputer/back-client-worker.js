@@ -5,16 +5,13 @@ const Logger = require('./classes/Logger.js');
 const PathFinder = require('./classes/PathFinder.js');
 const DbWorker = require('./classes/DbWorker.js');
 const Toolbox = new (require('./classes/Toolbox.js'))();
-const Config = require('./config.json');
 const Path = require('path');
 const Md5File = require('md5-file/promise');
 const Md5 = require('md5');
 const AppDir = Path.dirname(require.main.filename);
 
-const HardTimeoutSec = (parseInt(process.env.HARD_TIMEOUT_SEC, 10) || process.env.HARD_TIMEOUT_SEC) || Config.HardTimeoutSec || 60;
-const SoftTimeoutSec = (parseInt(process.env.SOFT_TIMEOUT_SEC, 10) || process.env.SOFT_TIMEOUT_SEC) || Config.SoftTimeoutSec || 30;
-const MFalconConfigPath = process.env.MFALCON_CONFIG_PATH || Config.MFalconConfigPath || './dataset/millenium-falcon.json';
-const BufferDbPath = process.env.BUFFER_DB_PATH || Config.BufferDbPath || './dataset/buffer.db';
+
+const Params = Toolbox.getAppParams();
 const IsApiCall = (process.argv[2]) ? true : false;
 
 var DataSet = {};
@@ -25,12 +22,12 @@ var main = async () => {
 	try{
 		var winston = Logger(`BackClientWorkerMain`, 1);
 
-		winston.log(`Loading Millenium Falcon configuration from ${MFalconConfigPath}.`);
-		DataSet.MFalcon = require(Path.join(AppDir, MFalconConfigPath));
+		winston.log(`Loading Millenium Falcon configuration from ${Params.MFalconConfigPath}.`);
+		DataSet.MFalcon = require(Path.join(AppDir, Params.MFalconConfigPath));
 
-		winston.log(`Initialising buffer database from ${BufferDbPath}.`);
+		winston.log(`Initialising buffer database from ${Params.BufferDbPath}.`);
 		BufferDb = new Db();
-		await BufferDb.openDb(BufferDbPath);
+		await BufferDb.openDb(Params.BufferDbPath);
 
 		winston.log(`Generating universe db and Millenium Falcon hash.`);
 		DbAndMFalconConfigHash = await Md5File(DataSet.MFalcon.routes_db);
@@ -52,7 +49,7 @@ var CliCall = async () => {
 		var winston = Logger(`BackClientWorkerMain->CLI`, 1);
 		winston.log(`We were called from the command line. Starting process.`);
 
-		var empireConfigPath = MFalconConfigPath.split('/');
+		var empireConfigPath = Params.MFalconConfigPath.split('/');
 		delete empireConfigPath[empireConfigPath.length-1];
 		empireConfigPath = `${empireConfigPath.join('/')}/empire.json`;
 		winston.log(`Retrieving Empire intel from ${empireConfigPath}.`);
@@ -136,11 +133,11 @@ var ApiCall = async () => {
 		var winston = Logger(`BackClientWorkerMain->API`, 1);
 		winston.log(`We were called from the api. Starting process.`);
 
-		winston.log(`Safeguarding with a hard timeout of ${HardTimeoutSec} seconds.`);
+		winston.log(`Safeguarding with a hard timeout of ${Params.HardTimeoutSec} seconds.`);
 		var hardTimeoutHandle = setTimeout(() => { 
-			winston.log(`Hitted hard timeout of ${HardTimeoutSec} seconds. Killing instance.`);
+			winston.log(`Hitted hard timeout of ${Params.HardTimeoutSec} seconds. Killing instance.`);
 			process.exit();
-		}, HardTimeoutSec*1000);
+		}, Params.HardTimeoutSec*1000);
 
 		winston.log(`Signalling to the API that we are ready to receive empire data.`);
 		process.once('message', empireIntel => { winston.log(`Got empire intel data.`); DataSet.Empire = empireIntel; });
@@ -183,12 +180,12 @@ var ApiCall = async () => {
 			winston.log(routes[i].route);
 
 
-		winston.log(`Safeguarding with a soft timeout of ${SoftTimeoutSec} seconds.`);
+		winston.log(`Safeguarding with a soft timeout of ${Params.SoftTimeoutSec} seconds.`);
 		var softTimeoutReached = false;
 		var softTimeoutHandle = setTimeout(() => { 
-			winston.log(`Hitted soft timeout of ${SoftTimeoutSec} seconds. Finishing current compute and returning what we got.`);
+			winston.log(`Hitted soft timeout of ${Params.SoftTimeoutSec} seconds. Finishing current compute and returning what we got.`);
 			softTimeoutReached = true;
-		}, SoftTimeoutSec*1000);
+		}, Params.SoftTimeoutSec*1000);
 		winston.log(`Finding out the best available waypoints on the ${routes.length} available routes.`);
 		var routeList = [];
 		for(let i = 0; i < routes.length; i++){

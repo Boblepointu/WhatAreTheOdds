@@ -4,18 +4,16 @@ const Logger = require('./classes/Logger.js');
 const PathFinder = require('./classes/PathFinder.js');
 const Db = require('./classes/Db.js');
 const Toolbox = new (require('./classes/Toolbox.js'))();
-const Config = require('./config.json');
 const Md5File = require('md5-file/promise');
 const Md5 = require('md5');
 
-const MFalconConfigPath = process.env.MFALCON_CONFIG_PATH || Config.MFalconConfigPath || './dataset/millenium-falcon.json';
-const BufferDbPath = process.env.BUFFER_DB_PATH || Config.BufferDbPath || './dataset/buffer.db';
+const Params = Toolbox.getAppParams();
 
 const main = async () => {
 	var winston = Logger(`BackDbWorkerMain`, 1);
 
-	winston.log(`Retrieving Millenium Falcon attributes & Universe graph (${MFalconConfigPath}).`);
-	var DataSet = await Toolbox.readData(MFalconConfigPath);
+	winston.log(`Retrieving Millenium Falcon attributes & Universe graph (${Params.MFalconConfigPath}).`);
+	var DataSet = { MFalcon: require(Params.MFalconConfigPath) };
 
 	winston.log(`Generating universe db and Millenium Falcon hash.`);
 	var DbAndMFalconConfigHash = await Md5File(DataSet.MFalcon.routes_db);
@@ -28,7 +26,7 @@ const main = async () => {
 
 	winston.log(`Opening buffer database.`);
 	var BufferDb = new Db();
-	await BufferDb.openDb(BufferDbPath);
+	await BufferDb.openDb(Params.BufferDbPath);
 
 	var pathFinder = new PathFinder(UniverseDb, DataSet.MFalcon);
 

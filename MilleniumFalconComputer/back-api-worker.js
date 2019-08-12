@@ -4,15 +4,8 @@ const Cluster = require("cluster");
 const CpuCount = (require("os")).cpus().length;
 const Toolbox = new (require('./classes/Toolbox.js'))();
 const Logger = require('./classes/Logger.js');
-const Config = require('./config.json');
 
-const Port = (parseInt(process.env.PORT, 10) || process.env.PORT) || Config.Port || 3000;
-const MaxSimultaneousComputation = (parseInt(process.env.MAX_SIMULTANEOUS_COMPUTATION, 10) || process.env.MAX_SIMULTANEOUS_COMPUTATION) 
-																		|| Config.MaxSimultaneousComputation || 10;
-const AllowAllAccessControlOrigins = (parseInt(process.env.ALLOW_ALL_ACCESS_CONTROL_ORIGIN, 10) || process.env.ALLOW_ALL_ACCESS_CONTROL_ORIGIN) 
-																		|| Config.AllowAllAccessControlOrigins || false;
-const MaxSentRouteToClient = (parseInt(process.env.MAX_SENT_ROUTE_TO_CLIENT, 10) || process.env.MAX_SENT_ROUTE_TO_CLIENT)
-																		|| Config.MaxSentRouteToClient || 10;
+const Params = Toolbox.getAppParams();
 
 if(Cluster.isMaster){
 	const winston = new Logger('BackApiMasterNode');
@@ -37,6 +30,7 @@ if(Cluster.isMaster){
 	const App = Express();
 	const BodyParser = require('body-parser');
 	const ClientWorker = require('./classes/ClientWorker.js');
+	const Validator = new (require('./classes/Validator.js'))();
 
 	const winston = new Logger('BackApiSlaveNode');
 
@@ -47,7 +41,7 @@ if(Cluster.isMaster){
 	winston.log(`Serving frontend folder.`);
 	App.use('/', Express.static('public'));
 
-	if(AllowAllAccessControlOrigins){
+	if(Params.AllowAllAccessControlOrigins){
 		winston.log(`Allowing access control origin for anybody.`);
 		App.use((req, res, next) => {
 		  res.header("Access-Control-Allow-Origin", "*");
@@ -73,16 +67,16 @@ if(Cluster.isMaster){
 			winston.log(`Verifying if we can handle more simultaneous computations.`);
 			var spawnedChildsCount = await getSpawnedChildsCount();
 
-			winston.log(`There is ${spawnedChildsCount} childs spawned, and the max simultaneous workers is ${MaxSimultaneousComputation}`);
-			if(spawnedChildsCount >= MaxSimultaneousComputation){
-				winston.warn(`Refused a request for compute; worker count of ${MaxSimultaneousComputation} limit apply.`);
+			winston.log(`There is ${spawnedChildsCount} childs spawned, and the max simultaneous workers is ${Params.MaxSimultaneousComputation}`);
+			if(spawnedChildsCount >= Params.MaxSimultaneousComputation){
+				winston.warn(`Refused a request for compute; worker count of ${Params.MaxSimultaneousComputation} limit apply.`);
 				res.status(503);
 				res.end('Server is already computing as much as it can. Please retry later.');
 				return;
 			}
 
 			winston.log(`Validating empire intel inputs.`);
-			try{ await Toolbox.areEmpireIntelValid(Empire); }
+			try{ await Validator.areEmpireIntelValid(Empire); }
 			catch(err){
 				winston.error(err);
 				res.status(500);
@@ -93,7 +87,7 @@ if(Cluster.isMaster){
 			winston.log(`Given empire input parameters are valids.`);
 
 			winston.log(`Sanitizing input parameters.`);
-			Empire = Toolbox.sanitizeEmpireIntel(Empire);
+			Empire = Validator.sanitizeEmpireIntel(Empire);
 
 			var worker;
 
@@ -107,8 +101,8 @@ if(Cluster.isMaster){
 				process.send('newDeath');
 			};
 			var onDone = routes => { 
-				winston.log(`Sending the ${MaxSentRouteToClient} best routes.`);
-				res.end(JSON.stringify(routes.slice(0, MaxSentRouteToClient)));
+				winston.log(`Sending the ${Params.MaxSentRouteToClient} best routes.`);
+				res.end(JSON.stringify(routes.slice(0, Params.MaxSentRouteToClient)));
 				worker.removeListener('error', onError);
 				worker.removeListener('done', onDone);
 				winston.log(`Decrementing cluster worker count.`);
@@ -127,5 +121,5 @@ if(Cluster.isMaster){
 		}
 	});
 
-	App.listen(Port, () => { winston.log(`Onboard Quantum computer ready and accessible on port ${Port} !`); });
+	App.listen(Params.Port, () => { winston.log(`Onboard Quantum computer ready and accessible on port ${Params.Port} !`); });
 }
