@@ -69,7 +69,7 @@ module.exports = function(Db, MFalcon){
 				}
 				winston.log(`We pulled ${Object.keys(planetReachableFromSlices).length} planets from db; found ${directPathesHopCount.length} direct routes; with an universe depth of ${hopCount}.`);
 				winston.log(`Note: a result < 100% means some planets arn't linked to our search domain or links are impracticable given MFalcon autonomy (from ${MFalcon.departure} to ${MFalcon.arrival} with ${MFalcon.autonomy} days of autonomy).`);
-				resolve();
+				resolve(directPathesHopCount.length);
 			}catch(err){ reject(err); }
 		});
 	}

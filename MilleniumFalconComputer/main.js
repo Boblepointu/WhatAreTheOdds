@@ -62,7 +62,13 @@ var main = async () => {
 		var availableRoutes = 0;
 		while(!availableRoutes){
 			availableRoutes = (await BufferDb.selectRequest(`SELECT count(*) as cnt FROM routes WHERE workset_hash=?`, [WorkSetHash]))[0].cnt;
-			await Toolbox.sleep(1000);
+			var isUniverseValid = await BufferDb.selectRequest(`SELECT * FROM fully_explored_universes WHERE workset_hash=?`, [WorkSetHash]);
+			if(isUniverseValid.length && !isUniverseValid[0].travelable){
+				winston.error(`This universe is marked as untravelable. Nothing will be found whatever empire data you'll pass. Exiting !`);
+				process.exit();
+			}
+			if(!availableRoutes)
+				await Toolbox.sleep(1000);
 		}
 
 		winston.log(`BufferDb has got ${availableRoutes} available routes for processing. Continuing.`);

@@ -25,6 +25,13 @@ const main = async () => {
 	var BufferDb = new Db();
 	await BufferDb.openDb(Params.BufferDbPath);
 
+	winston.log(`Checking if this Universe has already been fully explored.`);
+	var fullyExplored = await BufferDb.selectRequest(`SELECT * FROM fully_explored_universes WHERE workset_hash=?`, [WorkSetHash]);
+	if(fullyExplored.length){
+		winston.log(`This universe has already been fully explored. Stopping here.`);
+		process.exit();
+	}
+
 	var pathFinder = new PathFinder(UniverseDb, DataSet.MFalcon);
 
 	winston.log(`Checking if this universe is already explored.`);
@@ -35,7 +42,13 @@ const main = async () => {
 	}
 
 	winston.log(`Building in memory universe graph.`);
-	await pathFinder.buildGraph();
+	var isUniverseTravelable = (await pathFinder.buildGraph()) ? true : false;
+
+	if(!isUniverseTravelable){
+		await BufferDb.insertRequest(`INSERT INTO fully_explored_universes (workset_hash, travelable) VALUES (?, ?)`, [WorkSetHash, 0]);
+		winston.warn(`This universe isn't travelable. No route will be found between ${DataSet.MFalcon.departure} and ${DataSet.MFalcon.arrival}. Registering and exiting here.`);
+		process.exit();
+	}
 
 	winston.log(`Pulling already found routes.`);
 	var foundRoutes = await BufferDb.selectRequest(`SELECT * FROM routes WHERE workset_hash=?`, [WorkSetHash]);
@@ -55,7 +68,7 @@ const main = async () => {
 	});
 
 	winston.log(`This universe has fully been explored !`);
-	await BufferDb.insertRequest(`INSERT INTO fully_explored_universes (workset_hash) VALUES (?)`, [WorkSetHash]);
+	await BufferDb.insertRequest(`INSERT INTO fully_explored_universes (workset_hash, travelable) VALUES (?, ?)`, [WorkSetHash, 1]);
 };
 
 main();

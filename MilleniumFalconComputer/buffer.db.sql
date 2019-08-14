@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS "routes" (
 	"workset_hash"	INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS "fully_explored_universes" (
-	"workset_hash"	TEXT NOT NULL UNIQUE
+	"workset_hash"	TEXT NOT NULL UNIQUE,
+	"travelable"	BOOLEAN NOT NULL
 );
 COMMIT;
