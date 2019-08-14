@@ -6,8 +6,6 @@ const PathFinder = require('./classes/PathFinder.js');
 const DbWorker = require('./classes/DbWorker.js');
 const Toolbox = new (require('./classes/Toolbox.js'))();
 const Path = require('path');
-const Md5File = require('md5-file/promise');
-const Md5 = require('md5');
 const AppDir = Path.dirname(require.main.filename);
 
 
@@ -16,7 +14,7 @@ const IsApiCall = (process.argv[2]) ? true : false;
 
 var DataSet = {};
 var BufferDb;
-var DbAndMFalconConfigHash;
+var WorkSetHash;
 
 var main = async () => {
 	try{
@@ -29,10 +27,10 @@ var main = async () => {
 		BufferDb = new Db();
 		await BufferDb.openDb(Params.BufferDbPath);
 
+		// Generating hashes
 		winston.log(`Generating universe db and Millenium Falcon hash.`);
-		DbAndMFalconConfigHash = await Md5File(DataSet.MFalcon.routes_db);
-		DbAndMFalconConfigHash = Md5(DbAndMFalconConfigHash+JSON.stringify([DataSet.MFalcon.departure, DataSet.MFalcon.arrival, DataSet.MFalcon.autonomy]));
-		winston.log(`Db and Millenium Falcon hash is ${DbAndMFalconConfigHash}.`);	
+		WorkSetHash = await Toolbox.getWorkSetHash(DataSet.MFalcon);
+		winston.log(`Db and Millenium Falcon hash is ${WorkSetHash}.`);	
 
 		if(!IsApiCall) await CliCall();
 		else await ApiCall();
@@ -77,7 +75,7 @@ var CliCall = async () => {
 		winston.log(`Polling BufferDb until we got a result from back db worker.`);
 		var availableRoutes = 0;
 		while(!availableRoutes){
-			availableRoutes = (await BufferDb.selectRequest(`SELECT count(*) as cnt FROM routes WHERE db_and_mfalcon_config_md5=?`, [DbAndMFalconConfigHash]))[0].cnt;
+			availableRoutes = (await BufferDb.selectRequest(`SELECT count(*) as cnt FROM routes WHERE workset_hash=?`, [WorkSetHash]))[0].cnt;
 			await Toolbox.sleep(1000);
 		}
 		winston.log(`BufferDb has got ${availableRoutes} available routes for processing. Continuing.`);
@@ -90,7 +88,7 @@ var CliCall = async () => {
 		var pathFinder = new PathFinder(UniverseDb, DataSet.MFalcon);
 
 		winston.log(`Pulling available routes from buffer db.`);
-		var routes = await BufferDb.selectRequest(`SELECT * FROM routes WHERE db_and_mfalcon_config_md5=?`, [DbAndMFalconConfigHash]);
+		var routes = await BufferDb.selectRequest(`SELECT * FROM routes WHERE workset_hash=?`, [WorkSetHash]);
 
 		winston.log('List of available routes : ');
 		for(let i = 0; i < routes.length; i++)
@@ -158,7 +156,7 @@ var ApiCall = async () => {
 		winston.log(`Polling BufferDb until we got a result from back db worker.`);
 		var availableRoutes = 0;
 		while(!availableRoutes){
-			availableRoutes = (await BufferDb.selectRequest(`SELECT count(*) as cnt FROM routes WHERE db_and_mfalcon_config_md5=?`, [DbAndMFalconConfigHash]))[0].cnt;
+			availableRoutes = (await BufferDb.selectRequest(`SELECT count(*) as cnt FROM routes WHERE workset_hash=?`, [WorkSetHash]))[0].cnt;
 			await Toolbox.sleep(1000);
 			if(!availableRoutes)
 				winston.log(`BufferDb has got no available routes for processing. Waiting...`);
@@ -173,7 +171,7 @@ var ApiCall = async () => {
 		var pathFinder = new PathFinder(UniverseDb, DataSet.MFalcon);
 
 		winston.log(`Pulling available routes from buffer db.`);
-		var routes = await BufferDb.selectRequest(`SELECT * FROM routes WHERE db_and_mfalcon_config_md5=?`, [DbAndMFalconConfigHash]);
+		var routes = await BufferDb.selectRequest(`SELECT * FROM routes WHERE workset_hash=?`, [WorkSetHash]);
 
 		winston.log('List of available routes : ');
 		for(let i = 0; i < routes.length; i++)

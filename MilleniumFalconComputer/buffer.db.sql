@@ -2,9 +2,9 @@ BEGIN TRANSACTION;
 CREATE TABLE IF NOT EXISTS "routes" (
 	"id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
 	"route"	TEXT NOT NULL,
-	"db_and_mfalcon_config_md5"	INTEGER NOT NULL
+	"workset_hash"	INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS "fully_explored_universes" (
-	"db_and_mfalcon_config_md5"	TEXT NOT NULL UNIQUE
+	"workset_hash"	TEXT NOT NULL UNIQUE
 );
 COMMIT;

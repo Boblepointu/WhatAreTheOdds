@@ -7,8 +7,6 @@ const DbWorker = require('./classes/DbWorker.js');
 const ApiWorker = require('./classes/ApiWorker.js');
 const Validator = new (require('./classes/Validator.js'))();
 const Fs = require("fs");
-const Md5File = require('md5-file/promise');
-const Md5 = require('md5');
 
 const Params = Toolbox.getAppParams();
 
@@ -48,9 +46,8 @@ var main = async () => {
 
 		// Generating hashes
 		winston.log(`Generating universe db and Millenium Falcon hash.`);
-		var DbAndMFalconConfigHash = await Md5File(MFalcon.routes_db);
-		DbAndMFalconConfigHash = Md5(DbAndMFalconConfigHash+JSON.stringify([MFalcon.departure, MFalcon.arrival, MFalcon.autonomy]));
-		winston.log(`Db and Millenium Falcon hash is ${DbAndMFalconConfigHash}.`);
+		var WorkSetHash = await Toolbox.getWorkSetHash(MFalcon);
+		winston.log(`Db and Millenium Falcon hash is ${WorkSetHash}.`);
 
 		winston.log(`Executing BackDbWorker.`);
 		var backDbWorker;
@@ -74,7 +71,7 @@ var main = async () => {
 		winston.log(`Polling BufferDb until we got a result from back db worker.`);
 		var availableRoutes = 0;
 		while(!availableRoutes){
-			availableRoutes = (await BufferDb.selectRequest(`SELECT count(*) as cnt FROM routes WHERE db_and_mfalcon_config_md5=?`, [DbAndMFalconConfigHash]))[0].cnt;
+			availableRoutes = (await BufferDb.selectRequest(`SELECT count(*) as cnt FROM routes WHERE workset_hash=?`, [WorkSetHash]))[0].cnt;
 			await Toolbox.sleep(1000);
 		}
 

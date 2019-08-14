@@ -1,11 +1,19 @@
 "use strict";
 
 module.exports = function(){
+	const Md5File = require('md5-file/promise');
+	const Md5 = require('md5');		
 	const Path = require('path');
 	const AppDir = Path.dirname(require.main.filename);	
 	const Logger = require('./Logger.js');
 	const Config = require('../config.json');
 	const winston = new Logger('Toolbox');
+
+	this.getWorkSetHash = async MFalcon => {
+		var DbAndMFalconConfigHash = await Md5File(MFalcon.routes_db);
+		DbAndMFalconConfigHash = Md5(DbAndMFalconConfigHash+JSON.stringify([MFalcon.departure, MFalcon.arrival, MFalcon.autonomy]));
+		return DbAndMFalconConfigHash;
+	}
 
 	this.getAppParams = () => {
 		var params = {};

@@ -4,8 +4,6 @@ const Logger = require('./classes/Logger.js');
 const PathFinder = require('./classes/PathFinder.js');
 const Db = require('./classes/Db.js');
 const Toolbox = new (require('./classes/Toolbox.js'))();
-const Md5File = require('md5-file/promise');
-const Md5 = require('md5');
 
 const Params = Toolbox.getAppParams();
 
@@ -16,9 +14,8 @@ const main = async () => {
 	var DataSet = { MFalcon: require(Params.MFalconConfigPath) };
 
 	winston.log(`Generating universe db and Millenium Falcon hash.`);
-	var DbAndMFalconConfigHash = await Md5File(DataSet.MFalcon.routes_db);
-	DbAndMFalconConfigHash = Md5(DbAndMFalconConfigHash+JSON.stringify([DataSet.MFalcon.departure, DataSet.MFalcon.arrival, DataSet.MFalcon.autonomy]));
-	winston.log(`Db and Millenium Falcon hash is ${DbAndMFalconConfigHash}.`);
+	var WorkSetHash = await Toolbox.getWorkSetHash(DataSet.MFalcon);
+	winston.log(`Db and Millenium Falcon hash is ${WorkSetHash}.`);
 
 	winston.log(`Opening universe database.`);
 	var UniverseDb = new Db();
@@ -31,7 +28,7 @@ const main = async () => {
 	var pathFinder = new PathFinder(UniverseDb, DataSet.MFalcon);
 
 	winston.log(`Checking if this universe is already explored.`);
-	var cnt = (await BufferDb.selectRequest(`SELECT count(*) as cnt FROM fully_explored_universes WHERE db_and_mfalcon_config_md5=?`, [DbAndMFalconConfigHash]))[0].cnt;
+	var cnt = (await BufferDb.selectRequest(`SELECT count(*) as cnt FROM fully_explored_universes WHERE workset_hash=?`, [WorkSetHash]))[0].cnt;
 	if(cnt != 0){
 		winston.log(`This universe has already been fully explored ! Stopping here this worker.`);
 		process.exit();
@@ -41,7 +38,7 @@ const main = async () => {
 	await pathFinder.buildGraph();
 
 	winston.log(`Pulling already found routes.`);
-	var foundRoutes = await BufferDb.selectRequest(`SELECT * FROM routes WHERE db_and_mfalcon_config_md5=?`, [DbAndMFalconConfigHash]);
+	var foundRoutes = await BufferDb.selectRequest(`SELECT * FROM routes WHERE workset_hash=?`, [WorkSetHash]);
 	var foundRoutesMap = {};
 	for(var i = 0; i < foundRoutes.length; i++)
 		foundRoutesMap[foundRoutes[i].route] = true;
@@ -53,12 +50,12 @@ const main = async () => {
 			if(foundRoutesMap[routeStr]) return;
 
 			winston.log(`Found a new route (${routeStr}). Saving it into buffer db.`);
-			await BufferDb.insertRequest(`INSERT INTO routes (route, db_and_mfalcon_config_md5) VALUES (?, ?)`, [routeStr, DbAndMFalconConfigHash]);
+			await BufferDb.insertRequest(`INSERT INTO routes (route, workset_hash) VALUES (?, ?)`, [routeStr, WorkSetHash]);
 		}catch(err){ winston.error(err); }
 	});
 
 	winston.log(`This universe has fully been explored !`);
-	await BufferDb.insertRequest(`INSERT INTO fully_explored_universes (db_and_mfalcon_config_md5) VALUES (?)`, [DbAndMFalconConfigHash]);
+	await BufferDb.insertRequest(`INSERT INTO fully_explored_universes (workset_hash) VALUES (?)`, [WorkSetHash]);
 };
 
 main();
