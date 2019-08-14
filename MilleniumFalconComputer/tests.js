@@ -5,7 +5,7 @@ const JasmineConsoleReporter = require('jasmine-console-reporter');
 
 Jasmine.loadConfig({
     spec_dir: 'tests',
-    spec_files: ['**/[sS]pec*.js'],
+    spec_files: ['**/[sS]pecBuildTime*.js'],
     helpers: ['helpers/**/*.js'],
     random: false,
     seed: null,

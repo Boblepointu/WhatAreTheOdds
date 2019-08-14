@@ -15,5 +15,8 @@ RUN bash build.sh
 
 WORKDIR /app/MilleniumFalconComputer/
 
+# Execute tests
+RUN yarn run test
+
 # Launch the app
 CMD ["yarn", "run", "start"]
