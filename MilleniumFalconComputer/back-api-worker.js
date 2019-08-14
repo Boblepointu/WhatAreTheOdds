@@ -79,7 +79,7 @@ if(Cluster.isMaster){
 			try{ await Validator.areEmpireIntelValid(Empire); }
 			catch(err){
 				winston.error(err);
-				res.status(500);
+				res.status(422);
 				res.end(err.toString());
 				return;
 			}
@@ -90,7 +90,6 @@ if(Cluster.isMaster){
 			Empire = Validator.sanitizeEmpireIntel(Empire);
 
 			var worker;
-
 			var onError = err => {
 				winston.error('Worker died prematurily.');
 				res.status(500);

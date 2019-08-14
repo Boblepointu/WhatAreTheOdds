@@ -27,7 +27,6 @@ var main = async () => {
 		BufferDb = new Db();
 		await BufferDb.openDb(Params.BufferDbPath);
 
-		// Generating hashes
 		winston.log(`Generating universe db and Millenium Falcon hash.`);
 		WorkSetHash = await Toolbox.getWorkSetHash(DataSet.MFalcon);
 		winston.log(`Db and Millenium Falcon hash is ${WorkSetHash}.`);	
@@ -56,7 +55,6 @@ var CliCall = async () => {
 		winston.log(`Since we were called from CLI, executing BackDbWorker.`);
 		var backDbWorker = new DbWorker();
 		await backDbWorker.spawn();
-
 		winston.log(`BackDbWorker spawned.`);
 
 		winston.log(`Polling BufferDb until we got a result from back db worker.`);
@@ -103,7 +101,7 @@ var CliCall = async () => {
 			winston.log(`Found ${routeList.length} routes suitable with an empire countdown of ${DataSet.Empire.countdown}.`);
 			
 			for(let i = 0; i < routeList.length; i++)
-				formattedRoutesList.push(FormatResult(routeList[i]));
+				formattedRoutesList.push(Toolbox.formatRoute(routeList[i]));
 			
 			for(let i = 0; i < formattedRoutesList.length; i++){
 				var currRoute = formattedRoutesList[i];
@@ -120,17 +118,20 @@ var ApiCall = async () => {
 
 		winston.log(`Safeguarding with a hard timeout of ${Params.HardTimeoutSec} seconds.`);
 		var hardTimeoutHandle = setTimeout(() => { 
-			winston.log(`Hitted hard timeout of ${Params.HardTimeoutSec} seconds. Killing instance.`);
+			winston.error(`Hitted hard timeout of ${Params.HardTimeoutSec} seconds. Killing instance.`);
 			process.exit();
 		}, Params.HardTimeoutSec*1000);
 
 		winston.log(`Signalling to the API that we are ready to receive empire data.`);
-		process.once('message', empireIntel => { winston.log(`Got empire intel data.`); DataSet.Empire = empireIntel; });
+		process.once('message', empireIntel => { 
+			winston.log(`Got empire intel data.`); 
+			DataSet.Empire = empireIntel;
+		});
 		process.send('ready');
 
 		winston.log(`Setting up a timeout to avoid phantom processes, in case of api worker management errors.`);
 		var timeoutHandle = setTimeout(() => {
-			winston.error(`Timeout waiting for ipc input from the api. Killed.`);
+			winston.error(`Timeout waiting for ipc input for empire intel from the api process. Killed.`);
 			process.exit();
 		}, 5000);
 
@@ -144,9 +145,10 @@ var ApiCall = async () => {
 		var availableRoutes = 0;
 		while(!availableRoutes){
 			availableRoutes = (await BufferDb.selectRequest(`SELECT count(*) as cnt FROM routes WHERE workset_hash=?`, [WorkSetHash]))[0].cnt;
-			await Toolbox.sleep(1000);
-			if(!availableRoutes)
+			if(!availableRoutes){
+				await Toolbox.sleep(1000);
 				winston.log(`BufferDb has got no available routes for processing. Waiting...`);
+			}
 		}
 		winston.log(`BufferDb has got ${availableRoutes} available routes for processing. Continuing.`);
 
@@ -187,6 +189,8 @@ var ApiCall = async () => {
 			if(softTimeoutReached) break;
 		}
 
+		winston.log(`Clearing soft timeout.`);
+		clearTimeout(softTimeoutHandle);
 		winston.log(`Clearing hard timeout.`);
 		clearTimeout(hardTimeoutHandle);
 
@@ -197,7 +201,7 @@ var ApiCall = async () => {
 			winston.log(`Found ${routeList.length} routes suitable with an empire countdown of ${DataSet.Empire.countdown}.`);
 			
 			for(let i = 0; i < routeList.length; i++)
-				formattedRoutesList.push(FormatResult(routeList[i]));
+				formattedRoutesList.push(Toolbox.formatRoute(routeList[i]));
 			
 			for(let i = 0; i < formattedRoutesList.length; i++){
 				var currRoute = formattedRoutesList[i];
@@ -208,60 +212,9 @@ var ApiCall = async () => {
 		winston.log(`Sending results to api process.`);
 		process.send(formattedRoutesList);
 
-		winston.log(`Process will exit in 5 seconds.`);
+		winston.log(`Process will exit in 5 seconds (arbitrary time to let the time to send the computed data to api process via ipc).`);
 		await Toolbox.sleep(5000);
 	}catch(err){ throw err; }
-}
-
-var FormatResult = route => {
-	var formattedRoute = {
-		identifier: ""
-		,score: {
-			travelTime: route[route.length-1].travelTime
-			, chanceToMakeIt: 0
-			, hitCount: route[route.length-1].hitCount
-		},
-		rawRoute: route
-	};
-	// Computing odds to make it
-	var chanceToBeCaptured = 0;
-	if(formattedRoute.score.hitCount != 0){
-		var probaArray = [];
-		for(let i = 1; i <= formattedRoute.score.hitCount; i++)
-			if(i == 1) probaArray.push(0.1);
-			else probaArray.push(Math.pow(9, i-1) / Math.pow(10, i));
-		chanceToBeCaptured = probaArray.reduce((acc, curr) => acc+curr);
-		formattedRoute.score.chanceToMakeIt = (1-chanceToBeCaptured)*100;
-	}else formattedRoute.score.chanceToMakeIt = 100;
-
-	// Generating route identifier
-	var identifierArray = [];
-	var currIdentifierArray = [];
-	for(let i = 0; i < route.length; i++){
-		let lastStep = route[i-1];
-		let currStep = route[i];
-
-		if(currIdentifierArray[0] && currIdentifierArray[0] != currStep.planet){
-			currIdentifierArray[1] += `${lastStep.travelTime})`;
-			identifierArray.push(currIdentifierArray.join(''));
-			currIdentifierArray = [];
-		}
-
-		if(currStep.type == "passingBy"){
-			currIdentifierArray.push(currStep.planet);
-			currIdentifierArray.push(`(dayIn:${currStep.travelTime};dayOut:`);
-			if(!route[i+1]){
-				currIdentifierArray.push(`${currStep.travelTime})`);
-				identifierArray.push(currIdentifierArray.join(''));
-			}
-		}
-		else if(currStep.type == "refueling") currIdentifierArray.push(`[R]`);
-		else if(currStep.type == "waiting") currIdentifierArray.push(`[W${currStep.duration}]`);
-	}
-
-	formattedRoute.identifier = identifierArray.join('->');
-
-	return formattedRoute;
 }
 
 main();

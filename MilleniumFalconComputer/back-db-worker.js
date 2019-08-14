@@ -50,7 +50,7 @@ const main = async () => {
 			if(foundRoutesMap[routeStr]) return;
 
 			winston.log(`Found a new route (${routeStr}). Saving it into buffer db.`);
-			await BufferDb.insertRequest(`INSERT INTO routes (route, workset_hash) VALUES (?, ?)`, [routeStr, WorkSetHash]);
+			await BufferDb.insertRequest(`INSERT INTO routes (route_slug, workset_hash) VALUES (?, ?)`, [routeStr, WorkSetHash]);
 		}catch(err){ winston.error(err); }
 	});
 

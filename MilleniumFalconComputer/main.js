@@ -50,9 +50,7 @@ var main = async () => {
 		winston.log(`Db and Millenium Falcon hash is ${WorkSetHash}.`);
 
 		winston.log(`Executing BackDbWorker.`);
-		var backDbWorker = new DbWorker();
-		await backDbWorker.spawn();
-
+		await (new DbWorker()).spawn();
 		winston.log(`BackDbWorker spawned.`);
 
 		winston.log(`Polling BufferDb until we got a result from back db worker.`);
@@ -68,8 +66,8 @@ var main = async () => {
 		await BufferDb.closeDb();
 
 		winston.log(`Executing BackApiWorker.`);
-		var apiDbWorker = new ApiWorker();
-		await apiDbWorker.spawn();
+		await (new ApiWorker()).spawn();
+		winston.log(`BackApiWorker spawned.`);
 	}catch(err){
 		console.log('FATAL --->');
 		console.log(err);

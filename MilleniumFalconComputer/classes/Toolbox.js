@@ -9,6 +9,57 @@ module.exports = function(){
 	const Config = require('../config.json');
 	const winston = new Logger('Toolbox');
 
+	this.formatRoute = route => {
+		var formattedRoute = {
+			identifier: ""
+			,score: {
+				travelTime: route[route.length-1].travelTime
+				, chanceToMakeIt: 0
+				, hitCount: route[route.length-1].hitCount
+			},
+			rawRoute: route
+		};
+		// Computing odds to make it
+		var chanceToBeCaptured = 0;
+		if(formattedRoute.score.hitCount != 0){
+			var probaArray = [];
+			for(let i = 1; i <= formattedRoute.score.hitCount; i++)
+				if(i == 1) probaArray.push(0.1);
+				else probaArray.push(Math.pow(9, i-1) / Math.pow(10, i));
+			chanceToBeCaptured = probaArray.reduce((acc, curr) => acc+curr);
+			formattedRoute.score.chanceToMakeIt = (1-chanceToBeCaptured)*100;
+		}else formattedRoute.score.chanceToMakeIt = 100;
+
+		// Generating route identifier
+		var identifierArray = [];
+		var currIdentifierArray = [];
+		for(let i = 0; i < route.length; i++){
+			let lastStep = route[i-1];
+			let currStep = route[i];
+
+			if(currIdentifierArray[0] && currIdentifierArray[0] != currStep.planet){
+				currIdentifierArray[1] += `${lastStep.travelTime})`;
+				identifierArray.push(currIdentifierArray.join(''));
+				currIdentifierArray = [];
+			}
+
+			if(currStep.type == "passingBy"){
+				currIdentifierArray.push(currStep.planet);
+				currIdentifierArray.push(`(dayIn:${currStep.travelTime};dayOut:`);
+				if(!route[i+1]){
+					currIdentifierArray.push(`${currStep.travelTime})`);
+					identifierArray.push(currIdentifierArray.join(''));
+				}
+			}
+			else if(currStep.type == "refueling") currIdentifierArray.push(`[R]`);
+			else if(currStep.type == "waiting") currIdentifierArray.push(`[W${currStep.duration}]`);
+		}
+
+		formattedRoute.identifier = identifierArray.join('->');
+
+		return formattedRoute;
+	}
+
 	this.getWorkSetHash = async MFalcon => {
 		var DbAndMFalconConfigHash = await Md5File(MFalcon.routes_db);
 		DbAndMFalconConfigHash = Md5(DbAndMFalconConfigHash+JSON.stringify([MFalcon.departure, MFalcon.arrival, MFalcon.autonomy]));
