@@ -216,11 +216,6 @@ module.exports = function(Db, MFalcon){
 
 				// If we got a full path; end here.
 				if(node[1] == MFalcon.arrival){
-
-					// @TODO reduce step by step every waitTime in path until none
-					// Keep lowest travelTime with equal hitcount
-					// /@TODO
-
 					// Reconstructing our path from last found node.
 					let path = reconstruct(node);
 					// Reconstructing a verbose path. We don't need performance anymore.
