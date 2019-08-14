@@ -50,20 +50,7 @@ var main = async () => {
 		winston.log(`Db and Millenium Falcon hash is ${WorkSetHash}.`);
 
 		winston.log(`Executing BackDbWorker.`);
-		var backDbWorker;
-
-		var onError = err => {
-			winston.error('BackDbWorker died prematurily.');
-			backDbWorker.removeListener('error', onError);
-			backDbWorker.removeListener('done', onDone);
-		};
-		var onDone = routes => {
-			winston.log(`BackDbWorker gracefully closed. All routes in this universe has been found !`);
-			backDbWorker.removeListener('error', onError);
-			backDbWorker.removeListener('done', onDone);
-		};
-
-		backDbWorker = new DbWorker(onError, onDone);
+		var backDbWorker = new DbWorker();
 		await backDbWorker.spawn();
 
 		winston.log(`BackDbWorker spawned.`);
@@ -81,20 +68,7 @@ var main = async () => {
 		await BufferDb.closeDb();
 
 		winston.log(`Executing BackApiWorker.`);
-		var apiDbWorker;
-
-		var onError = err => {
-			winston.error('BackApiWorker died prematurily.');
-			backDbWorker.removeListener('error', onError);
-			backDbWorker.removeListener('done', onDone);
-		};
-		var onDone = routes => { 
-			winston.log(`BackApiWorker gracefully closed. All routes in this universe has been found !`);
-			backDbWorker.removeListener('error', onError);
-			backDbWorker.removeListener('done', onDone);
-		};
-
-		apiDbWorker = new ApiWorker(onError, onDone);
+		var apiDbWorker = new ApiWorker();
 		await apiDbWorker.spawn();
 	}catch(err){
 		console.log('FATAL --->');

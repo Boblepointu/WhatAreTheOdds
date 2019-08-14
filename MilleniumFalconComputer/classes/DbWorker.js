@@ -1,6 +1,6 @@
 "use strict";
 
-var DbWorker = function(onError, onDone){
+var DbWorker = function(){
 	const Spawn = require('child_process').spawn;
 	const Path = require('path');
 	const AppDir = Path.dirname(require.main.filename);
@@ -15,14 +15,10 @@ var DbWorker = function(onError, onDone){
 
 		childHandler.stdout.removeListener('data', dataListener);
 		childHandler.stderr.removeListener('data', dataListener);
-		childHandler.removeListener('close', dataListener);
+		childHandler.removeListener('close', closeListener);
 
 		winston.log(`DbWorker finished work.`);
 	};
-
-	winston.log(`Binding given listeners for error and done.`);
-	this.on('error', onError);
-	this.on('done', onDone);
 
 	this.spawn = () => {
 		return new Promise((resolve, reject) => {
@@ -40,10 +36,5 @@ var DbWorker = function(onError, onDone){
 		});
 	};
 }
-
-const Util = require('util');
-const EventEmitter = require('events').EventEmitter;
-
-Util.inherits(DbWorker, EventEmitter);
 
 module.exports = DbWorker;

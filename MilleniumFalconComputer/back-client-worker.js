@@ -54,20 +54,7 @@ var CliCall = async () => {
 		DataSet.Empire = require(Path.join(AppDir, empireConfigPath));
 
 		winston.log(`Since we were called from CLI, executing BackDbWorker.`);
-		var backDbWorker;
-
-		var onError = err => {
-			winston.error('BackDbWorker died prematurily.');
-			backDbWorker.removeListener('error', onError);
-			backDbWorker.removeListener('done', onDone);
-		};
-		var onDone = routes => { 
-			winston.log(`BackDbWorker gracefully closed. All routes in this universe has been found !`);
-			backDbWorker.removeListener('error', onError);
-			backDbWorker.removeListener('done', onDone);
-		};
-
-		backDbWorker = new DbWorker(onError, onDone);
+		var backDbWorker = new DbWorker();
 		await backDbWorker.spawn();
 
 		winston.log(`BackDbWorker spawned.`);
