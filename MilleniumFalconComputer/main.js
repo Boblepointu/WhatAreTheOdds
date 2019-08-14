@@ -5,7 +5,7 @@ const Toolbox = new (require('./classes/Toolbox.js'))();
 const Db = require('./classes/Db.js');
 const DbWorker = require('./classes/DbWorker.js');
 const ApiWorker = require('./classes/ApiWorker.js');
-const Validator = new (require('./classes/Validator.js'))();
+const JasmineRuntime = require('./classes/JasmineRuntime.js');
 const Fs = require("fs");
 
 const Params = Toolbox.getAppParams();
@@ -19,8 +19,13 @@ var main = async () => {
 	console.log(`=====Initialising Millenium Falcon computer=====`);
 	console.log(``);
 	try{
-		// First we validate each input, config and databases
-		await Validator.validateAllInputs();
+		// First we launch runtime testings.
+		var testResults = await JasmineRuntime('specRunTime_InputParams.js');
+		if(!testResults){
+			console.log(testResults)
+			winston.error(`RunTime tests throw errors. Something is wrong, the app can't work in these conditions. Exiting.`);
+			process.exit();
+		}
 
 		var MFalcon = require(Params.MFalconConfigPath);
 

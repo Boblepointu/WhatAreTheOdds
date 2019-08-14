@@ -77,12 +77,12 @@ var CliCall = async () => {
 
 		winston.log('List of available routes : ');
 		for(let i = 0; i < routes.length; i++)
-			winston.log(routes[i].route);
+			winston.log(routes[i].route_slug);
 
 		winston.log(`Finding out the best available waypoints on the ${routes.length} available routes.`);
 		var routeList = [];
 		for(let i = 0; i < routes.length; i++){
-			let routeRes = await pathFinder.computeOptimalWaypoints(DataSet.Empire, routes[i].route.split('->'));
+			let routeRes = await pathFinder.computeOptimalWaypoints(DataSet.Empire, routes[i].route_slug.split('->'));
 			if(!routeRes) continue;
 
 			winston.log('Found a suitable route ! Adding it and sorting resulting array.');
@@ -164,7 +164,7 @@ var ApiCall = async () => {
 
 		winston.log('List of available routes : ');
 		for(let i = 0; i < routes.length; i++)
-			winston.log(routes[i].route);
+			winston.log(routes[i].route_slug);
 
 
 		winston.log(`Safeguarding with a soft timeout of ${Params.SoftTimeoutSec} seconds.`);
@@ -176,7 +176,7 @@ var ApiCall = async () => {
 		winston.log(`Finding out the best available waypoints on the ${routes.length} available routes.`);
 		var routeList = [];
 		for(let i = 0; i < routes.length; i++){
-			let routeRes = await pathFinder.computeOptimalWaypoints(DataSet.Empire, routes[i].route.split('->'));
+			let routeRes = await pathFinder.computeOptimalWaypoints(DataSet.Empire, routes[i].route_slug.split('->'));
 			if(!routeRes) continue;
 
 			winston.log('Found a suitable route ! Adding it and sorting resulting array.');
