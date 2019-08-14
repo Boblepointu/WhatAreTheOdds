@@ -131,10 +131,10 @@ module.exports = function(Db, MFalcon){
 		try{			
 			winston.log(`Computing optimal waypoints for route [${route.join('->')}].`);
 
-			var getLinkDistance = async (from, to) => {
+			var getLinkDistances = async (from, to) => {
 				try{
 					var results = await Db.selectRequest(`SELECT travel_time FROM routes WHERE (origin=? AND destination=?) OR (origin=? AND destination=?) ORDER BY travel_time ASC`, [from, to, to, from]);
-					return results[0].travel_time;
+					return results.map(r => r.travel_time);
 				}catch(err){ throw err; }
 			}
 
@@ -149,14 +149,6 @@ module.exports = function(Db, MFalcon){
 				// Associate planet to day with bounty hunter
 				bountyHunters[tempBh[i].planet].push(tempBh[i].day);
 			}
-
-			// Computing minimum route traversal time
-			var routeMinimumTraversalTime = 0;
-			for(let i = 0; i < route.length; i++)
-				if(route[i+1])
-					routeMinimumTraversalTime += await getLinkDistance(route[i], route[i+1]);
-			routeMinimumTraversalTime = routeMinimumTraversalTime + Math.round(routeMinimumTraversalTime/MFalcon.autonomy);
-
 
 			// Function returning how much time we get on a planet at the same time a bounty hunter is on it
 			var getHitCount = (planet, startDay, endDay) => {
@@ -173,7 +165,7 @@ module.exports = function(Db, MFalcon){
 				var timeToDestination = 0;
 				for(let i = startIndex; i < route.length; i++)
 					if(route[i+1])
-						timeToDestination += await getLinkDistance(route[i], route[i+1]);
+						timeToDestination += Math.max(await getLinkDistances(route[i], route[i+1]));
 				timeToDestination = timeToDestination; //+ Math.round(timeToDestination/MFalcon.autonomy);
 				return timeToDestination;
 			}
@@ -255,17 +247,21 @@ module.exports = function(Db, MFalcon){
 				// Identifying next planet in route.
 				let nextPlanet = route[route.indexOf(node[1])+1];
 				// Identifying next planet distance.
-				let nextPlanetDistance = await getLinkDistance(node[1], nextPlanet);
+				let nextPlanetDistances = await getLinkDistances(node[1], nextPlanet);
 
-				// If we havn't got needed fuel to go to next planet; add a refuel node to neighbors.
-				if(node[5] < nextPlanetDistance){
-					let refuelNode = [1, node[1], 1, node[3]+1, getHitCount(node[1], node[3]+1, node[3]+1)+node[4], MFalcon.autonomy, node[6]+1, await getHeuristicRisk(node[1], node[3]+1), node];
-					neighbors.push(refuelNode);
-				} 
-				// Else, add next planet to the neighbors list.
-				else {
-					let passingByNode = [0, nextPlanet, nextPlanetDistance, node[3]+nextPlanetDistance, getHitCount(nextPlanet, node[3]+nextPlanetDistance, node[3]+nextPlanetDistance)+node[4], node[5]-nextPlanetDistance, node[6]+1, await getHeuristicRisk(node[1], node[3]+nextPlanetDistance), node];
-					neighbors.push(passingByNode);
+				let refualAlreadyAdded = false;
+				for(var i = 0; i < nextPlanetDistances; i++){
+					// If we havn't got needed fuel to go to next planet; add a refuel node to neighbors only if last neighbors isn't a refuel.
+					if(!refualAlreadyAdded && node[5] < nextPlanetDistances[i]){
+						let refuelNode = [1, node[1], 1, node[3]+1, getHitCount(node[1], node[3]+1, node[3]+1)+node[4], MFalcon.autonomy, node[6]+1, await getHeuristicRisk(node[1], node[3]+1), node];
+						neighbors.push(refuelNode);
+						refualAlreadyAdded = true;
+					} 
+					// Else, add next planet to the neighbors list. In case of multiple links between these planet, add them all
+					if(node[5] >= nextPlanetDistances[i]) {
+						let passingByNode = [0, nextPlanet, nextPlanetDistances[i], node[3]+nextPlanetDistances[i], getHitCount(nextPlanet, node[3]+nextPlanetDistances[i], node[3]+nextPlanetDistances[i])+node[4], node[5]-nextPlanetDistances[i], node[6]+1, await getHeuristicRisk(node[1], node[3]+nextPlanetDistances[i]), node];
+						neighbors.push(passingByNode);
+					}
 				}
 
 				// If last node in the chain isn't of type "wait" and heuristics != 0 for passingBy or refueling

@@ -10,8 +10,10 @@ ADD build.sh /app/
 
 WORKDIR /app
 
+# Build the app
 RUN bash build.sh
 
 WORKDIR /app/MilleniumFalconComputer/
 
+# Launch the app
 CMD ["yarn", "run", "start"]
