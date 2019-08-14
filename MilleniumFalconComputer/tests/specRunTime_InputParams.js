@@ -111,7 +111,8 @@ describe("Verifying universe database content.", function() {
 			var mFalcon = JSON.parse(Fs.readFileSync(Params.MFalconConfigPath));
 			var UniverseDb = new Db();
 			await UniverseDb.openDb(mFalcon.routes_db);
-			expect(true).toBe(true)
+			expect(true).toBe(true);
+			await UniverseDb.closeDb();
 		}catch(err){ expect(false).toBe(true); }
 	});
 
@@ -123,6 +124,7 @@ describe("Verifying universe database content.", function() {
 			var routesTableExist = (await UniverseDb.selectRequest(`SELECT name FROM sqlite_master WHERE type='table' AND name='routes'`, []))[0] ? true : false;
 			if(!routesTableExist) throw "";
 			else expect(true).toBe(true);
+			await UniverseDb.closeDb();
 		}catch(err){ expect(false).toBe(true); }
 	});	
 
@@ -134,6 +136,7 @@ describe("Verifying universe database content.", function() {
 			var routesTableExist = (await UniverseDb.selectRequest(`SELECT name FROM sqlite_master WHERE type='table' AND name='routes'`, []))[0] ? true : false;
 			if(!routesTableExist) throw "";
 			else expect(true).toBe(true);
+			await UniverseDb.closeDb();
 		}catch(err){ expect(false).toBe(true); }
 	});
 
@@ -144,6 +147,7 @@ describe("Verifying universe database content.", function() {
 			await UniverseDb.openDb(mFalcon.routes_db);		
 			var routesTableColumns = await UniverseDb.selectRequest(`PRAGMA table_info(routes)`, []);
 			expect(routesTableColumns.length).toEqual(3);
+			await UniverseDb.closeDb();
 		}catch(err){ expect(false).toBe(true); }
 	});
 
@@ -154,6 +158,7 @@ describe("Verifying universe database content.", function() {
 			await UniverseDb.openDb(mFalcon.routes_db);		
 			var routesTableColumns = await UniverseDb.selectRequest(`PRAGMA table_info(routes)`, []);
 			expect(routesTableColumns.length).toEqual(3);
+			await UniverseDb.closeDb();
 		}catch(err){ expect(false).toBe(true); }
 	});
 
@@ -165,6 +170,7 @@ describe("Verifying universe database content.", function() {
 			var routesTableColumns = await UniverseDb.selectRequest(`PRAGMA table_info(routes)`, []);
 			expect(routesTableColumns[0].name).toEqual('origin');
 			expect(routesTableColumns[0].type).toEqual('TEXT');
+			await UniverseDb.closeDb();
 		}catch(err){ expect(false).toBe(true); }
 	});	
 
@@ -176,6 +182,7 @@ describe("Verifying universe database content.", function() {
 			var routesTableColumns = await UniverseDb.selectRequest(`PRAGMA table_info(routes)`, []);
 			expect(routesTableColumns[1].name).toEqual('destination');
 			expect(routesTableColumns[1].type).toEqual('TEXT');
+			await UniverseDb.closeDb();
 		}catch(err){ expect(false).toBe(true); }
 	});
 
@@ -187,6 +194,7 @@ describe("Verifying universe database content.", function() {
 			var routesTableColumns = await UniverseDb.selectRequest(`PRAGMA table_info(routes)`, []);
 			expect(routesTableColumns[2].name).toEqual('travel_time');
 			expect(routesTableColumns[2].type == 'INTEGER' || routesTableColumns[2].type == 'UNSIGNED INTEGER').toBe(true);
+			await UniverseDb.closeDb();
 		}catch(err){ expect(false).toBe(true); }
 	});
 
@@ -197,6 +205,7 @@ describe("Verifying universe database content.", function() {
 			await UniverseDb.openDb(mFalcon.routes_db);		
 			var routesCnt = (await UniverseDb.selectRequest(`SELECT count(*) as cnt FROM routes`, []))[0].cnt;
 			expect(routesCnt>0).toBe(true);
+			await UniverseDb.closeDb();
 		}catch(err){ expect(false).toBe(true); }
 	});
 
@@ -206,7 +215,8 @@ describe("Verifying universe database content.", function() {
 			var UniverseDb = new Db();
 			await UniverseDb.openDb(mFalcon.routes_db);		
 			var routes = await UniverseDb.selectRequest(`SELECT * FROM routes WHERE origin=? OR destination=?`, [mFalcon.departure, mFalcon.departure]);
-			expect(routes.length > 0).toBe(true);		
+			expect(routes.length > 0).toBe(true);
+			await UniverseDb.closeDb();		
 		}catch(err){ expect(false).toBe(true); }
 	});
 
@@ -216,7 +226,8 @@ describe("Verifying universe database content.", function() {
 			var UniverseDb = new Db();
 			await UniverseDb.openDb(mFalcon.routes_db);
 			routes = await UniverseDb.selectRequest(`SELECT * FROM routes WHERE origin=? OR destination=?`, [mFalcon.arrival, mFalcon.arrival]);
-			expect(routes.length > 0).toBe(true);			
+			expect(routes.length > 0).toBe(true);	
+			await UniverseDb.closeDb();		
 		}catch(err){ expect(false).toBe(true); }
 	});	
 
@@ -233,7 +244,7 @@ describe("Verifying universe database content.", function() {
 				expect(routes[i].travel_time).toEqual(jasmine.any(Number));
 				expect(routes[i].travel_time >= 0).toBe(true);
 			}
-			
+			await UniverseDb.closeDb();
 		}catch(err){ expect(false).toBe(true); }
 	});
 });

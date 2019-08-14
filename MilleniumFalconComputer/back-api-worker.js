@@ -77,17 +77,6 @@ if(Cluster.isMaster){
 			}
 
 			winston.log(`Validating empire intel inputs.`);
-			/*
-			// Could use jasmine to validate here. 
-			// But we need to have a reason the empire data is faulty to return to client.
-			// Didn't get the time to modify/configure jasmine to permit that.
-			console.log(Empire)
-			var testResults = await JasmineRuntime('specRunTime_EmpireObject.js', Empire, false);
-			if(!testResults){
-				console.log(testResults)
-				winston.error(`RunTime tests throw errors. Something is wrong, the app can't work in these conditions. Exiting.`);
-				process.exit();
-			}*/
 			try{ await Validator.areEmpireIntelValid(Empire); }
 			catch(err){
 				winston.error(err);
