@@ -110,13 +110,6 @@ module.exports = function(){
 		try{			
 			winston.log(`Computing optimal waypoints for route [${route.join('->')}].`);
 
-			var getLinkDistances = async (from, to) => {
-				try{
-					return await UniverseWorkDb.getTravelTimes(from, to);
-					return results.map(r => r.travel_time);
-				}catch(err){ throw err; }
-			}
-
 			// Extracting bounty hunters data associated with this route
 			var tempBh = Empire.bounty_hunters.filter(bh => route.indexOf(bh.planet) != -1);
 			var bountyHunters = {};
@@ -144,7 +137,7 @@ module.exports = function(){
 				var timeToDestination = 0;
 				for(let i = startIndex; i < route.length; i++)
 					if(route[i+1])
-						timeToDestination += Math.max(await getLinkDistances(route[i], route[i+1]));
+						timeToDestination += Math.max(...(await UniverseWorkDb.getTravelTimes(route[i], route[i+1])));
 				timeToDestination = timeToDestination; //+ Math.round(timeToDestination/MFalcon.autonomy);
 				return timeToDestination;
 			}
@@ -193,8 +186,6 @@ module.exports = function(){
 				// Get the first node in the heap.
 				let node = heap.shift();
 
-				//console.log(route, node)
-
 				// If we got a full path; end here.
 				if(node[1] == MFalcon.arrival){
 					// Reconstructing our path from last found node.
@@ -223,10 +214,9 @@ module.exports = function(){
 				// Identifying next planet in route.
 				let nextPlanet = route[route.indexOf(node[1])+1];
 				// Identifying next planet distance.
-				let nextPlanetDistances = await getLinkDistances(node[1], nextPlanet);
+				let nextPlanetDistances = await UniverseWorkDb.getTravelTimes(node[1], nextPlanet);
 
-
-				for(var i = 0; i < nextPlanetDistances; i++){
+				for(var i = 0; i < nextPlanetDistances.length; i++){
 					// If we havn't got needed fuel to go to next planet; add a refuel node to neighbors only if last neighbors isn't a refuel.
 					if(node[5] < nextPlanetDistances[i] && node[0] != 1){
 						let refuelNode = [1, node[1], 1, node[3]+1, getHitCount(node[1], node[3]+1, node[3]+1)+node[4], MFalcon.autonomy, node[6]+1, await getHeuristicRisk(node[1], node[3]+1), node];

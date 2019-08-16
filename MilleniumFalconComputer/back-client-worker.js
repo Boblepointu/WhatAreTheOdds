@@ -92,11 +92,6 @@ var CliCall = async (dataSet, bufferDb) => {
 
 		winston.log(`Finding out the best available waypoints on the ${routes.length} available routes.`);
 		var routeList = [];
-		
-		/*await Toolbox.sleep(2000)
-		let routeRes = await pathFinder.computeOptimalWaypoints(universeDb, dataSet.MFalcon, dataSet.Empire, "Tatooine->P0->P3->P4->P2->P1->Endor".split('->'));
-		console.log(routeRes)
-		return;*/
 
 
 		for(let i = 0; i < routes.length; i++){
