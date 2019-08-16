@@ -165,7 +165,7 @@ module.exports = function(Db, MFalcon){
 				var timeToDestination = 0;
 				for(let i = startIndex; i < route.length; i++)
 					if(route[i+1])
-						timeToDestination += Math.max(await getLinkDistances(route[i], route[i+1]));
+						timeToDestination += Math.max(...(await getLinkDistances(route[i], route[i+1])));
 				timeToDestination = timeToDestination; //+ Math.round(timeToDestination/MFalcon.autonomy);
 				return timeToDestination;
 			}
@@ -245,7 +245,7 @@ module.exports = function(Db, MFalcon){
 				let nextPlanetDistances = await getLinkDistances(node[1], nextPlanet);
 
 				let refualAlreadyAdded = false;
-				for(var i = 0; i < nextPlanetDistances; i++){
+				for(var i = 0; i < nextPlanetDistances.length; i++){
 					// If we havn't got needed fuel to go to next planet; add a refuel node to neighbors only if last neighbors isn't a refuel.
 					if(!refualAlreadyAdded && node[5] < nextPlanetDistances[i]){
 						let refuelNode = [1, node[1], 1, node[3]+1, getHitCount(node[1], node[3]+1, node[3]+1)+node[4], MFalcon.autonomy, node[6]+1, await getHeuristicRisk(node[1], node[3]+1), node];
