@@ -19,7 +19,7 @@ const main = async () => {
 		var WorkSetHash = await Toolbox.getWorkSetHash(DataSet.MFalcon);
 		winston.log(`Db and Millenium Falcon hash is ${WorkSetHash}.`);
 
-		winston.log(`If work universe database exist, delete it. Should have been deleted at last close.`);
+		winston.log(`If work universe database exist, delete it.`);
 		try{ await Toolbox.deleteFile(Params.UniverseWorkDbPath); }
 		catch(err){}
 

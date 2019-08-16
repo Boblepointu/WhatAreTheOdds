@@ -139,6 +139,12 @@ You can also hard set these variables into [./MilleniumFalconComputer/config.jso
   - Example value : 0 or 1
   - Description : Allow cross origin requests; useful for development; could generate a risk for production.
 
+#### DryRun
+  - Config file entry : "DryRun"
+  - Environment variable : DRY_RUN
+  - Example value : 0 or 1
+  - Description : Dry run. Will delete buffer database at start if set to 1.
+
 #### MaxSentRouteToClient
   - Config file entry : "MaxSentRouteToClient"
   - Environment variable : MAX_SENT_ROUTE_TO_CLIENT
@@ -156,6 +162,12 @@ You can also hard set these variables into [./MilleniumFalconComputer/config.jso
   - Environment variable : BUFFER_DB_PATH
   - Example value : "./dataset/buffer.db"
   - Description : Path of the `buffer.db` database. If it don't exist, will be generated automatically.
+
+#### UniverseWorkDbPath
+  - Config file entry : "UniverseWorkDbPath"
+  - Environment variable : UNIVERSE_WORK_DB_PATH
+  - Example value : "./dataset/universe_wrk.db"
+  - Description : Path of the `universe_wrk.db` database. Will be rebuilt at each start.
 
 #### HardTimeoutSec
   - Config file entry : "HardTimeoutSec"

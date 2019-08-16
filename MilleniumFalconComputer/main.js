@@ -38,6 +38,12 @@ var main = async () => {
 		var WorkSetHash = await Toolbox.getWorkSetHash(MFalcon);
 		winston.log(`Db and Millenium Falcon hash is ${WorkSetHash}.`);
 
+		if(Params.DryRun){
+			winston.log(`Dry run asked. Deleting buffer database.`);
+			try{ await Toolbox.deleteFile(Params.BufferDbPath); }
+			catch(err){}			
+		}
+
 		// Creating, opening, populating BufferDb if not existing
 		var bufferDb = new BufferDb(Params.BufferDbPath);
 		await bufferDb.open();

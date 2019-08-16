@@ -106,7 +106,8 @@ module.exports = function(){
 		params.MFalconConfigPath = process.env.MFALCON_CONFIG_PATH || Config.MFalconConfigPath || './dataset/millenium-falcon.json';
 		params.BufferDbPath = process.env.BUFFER_DB_PATH || Config.BufferDbPath || './dataset/buffer.db';
 		params.UniverseWorkDbPath = process.env.UNIVERSE_WORK_DB_PATH || Config.UniverseWorkDbPath || './dataset/universe_wrk.db';
-		params.LogLevel = process.env.LOG_LEVEL || Config.LogLevel || 4;
+		params.LogLevel = process.env.LOG_LEVEL || Config.LogLevel || 2;
+		params.DryRun = (parseInt(process.env.DRY_RUN, 10) || process.env.DRY_RUN) || Config.DryRun || 0;		
 		return params;
 	}
 

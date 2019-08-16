@@ -33,6 +33,11 @@ describe("Verifying back-api.js parameters.", function() {
 		expect(Params.AllowAllAccessControlOrigins == 0 || Params.AllowAllAccessControlOrigins == 1).toBe(true);
 	});
 
+	it("contains a valid (0 || 1) integer 'DryRun' value", function() {
+		expect(Params.DryRun).toEqual(jasmine.any(Number));
+		expect(Params.DryRun == 0 || Params.DryRun == 1).toBe(true);
+	});	
+
 	it("contains a valid (>0) integer 'MaxSentRouteToClient' value", function() {
 		expect(Params.MaxSentRouteToClient).toEqual(jasmine.any(Number));
 		expect(Params.MaxSentRouteToClient > 0).toBe(true);
