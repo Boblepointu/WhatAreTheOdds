@@ -1,7 +1,8 @@
 {
 	"MFalconConfigPath": "./dataset/millenium-falcon.json"
 	, "BufferDbPath": "./dataset/buffer.db"
-	, "LogLevel": 4
+	, "UniverseWorkDbPath": "./dataset/universe_wrk.db"
+	, "LogLevel": 2
 	, "HardTimeoutSec": 60
 	, "SoftTimeoutSec": 20
 	, "Port": 3000
