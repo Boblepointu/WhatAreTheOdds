@@ -1,6 +1,7 @@
 "use strict";
 
-const Db = require('./classes/Db.js');
+const BufferDb = require('./classes/BufferDb.js');
+const UniverseDb = require('./classes/UniverseDb.js');
 const Logger = require('./classes/Logger.js');
 const PathFinder = require('./classes/PathFinder.js');
 const DbWorker = require('./classes/DbWorker.js');
@@ -12,27 +13,25 @@ const AppDir = Path.dirname(require.main.filename);
 const Params = Toolbox.getAppParams();
 const IsApiCall = (process.argv[2]) ? true : false;
 
-var DataSet = {};
-var BufferDb;
-var WorkSetHash;
-
 var main = async () => {
 	try{
 		var winston = Logger(`BackClientWorkerMain`, 1);
 
 		winston.log(`Loading Millenium Falcon configuration from ${Params.MFalconConfigPath}.`);
-		DataSet.MFalcon = require(Path.join(AppDir, Params.MFalconConfigPath));
-
-		winston.log(`Initialising buffer database from ${Params.BufferDbPath}.`);
-		BufferDb = new Db();
-		await BufferDb.openDb(Params.BufferDbPath);
+		var dataSet = {};
+		dataSet.MFalcon = require(Path.join(AppDir, Params.MFalconConfigPath));
 
 		winston.log(`Generating universe db and Millenium Falcon hash.`);
-		WorkSetHash = await Toolbox.getWorkSetHash(DataSet.MFalcon);
-		winston.log(`Db and Millenium Falcon hash is ${WorkSetHash}.`);	
+		var workSetHash = await Toolbox.getWorkSetHash(dataSet.MFalcon);
+		winston.log(`Db and Millenium Falcon hash is ${workSetHash}.`);
 
-		if(!IsApiCall) await CliCall();
-		else await ApiCall();
+		winston.log(`Opening buffer database from ${Params.BufferDbPath}.`);
+		var bufferDb = new BufferDb(Params.BufferDbPath);
+		await bufferDb.open();
+		await bufferDb.setWorkSetHash(workSetHash);
+
+		if(!IsApiCall) await CliCall(dataSet, bufferDb);
+		else await ApiCall(dataSet, bufferDb);
 
 	}catch(err){ 
 		console.log('FATAL---->');
@@ -41,7 +40,7 @@ var main = async () => {
 	}
 };
 
-var CliCall = async () => {
+var CliCall = async (dataSet, bufferDb) => {
 	try{
 		var winston = Logger(`BackClientWorkerMain->CLI`, 1);
 		winston.log(`We were called from the command line. Starting process.`);
@@ -50,36 +49,42 @@ var CliCall = async () => {
 		delete empireConfigPath[empireConfigPath.length-1];
 		empireConfigPath = `${empireConfigPath.join('/')}/empire.json`;
 		winston.log(`Retrieving Empire intel from ${empireConfigPath}.`);
-		DataSet.Empire = require(Path.join(AppDir, empireConfigPath));
+		dataSet.Empire = require(Path.join(AppDir, empireConfigPath));
 
 		winston.log(`Since we were called from CLI, executing BackDbWorker.`);
 		var backDbWorker = new DbWorker();
 		await backDbWorker.spawn();
 		winston.log(`BackDbWorker spawned.`);
 
-		winston.log(`Polling BufferDb until we got a result from back db worker.`);
-		var availableRoutes = 0;
-		while(!availableRoutes){
-			availableRoutes = (await BufferDb.selectRequest(`SELECT count(*) as cnt FROM routes WHERE workset_hash=?`, [WorkSetHash]))[0].cnt;
-			var isUniverseValid = await BufferDb.selectRequest(`SELECT * FROM fully_explored_universes WHERE workset_hash=?`, [WorkSetHash]);
-			if(isUniverseValid.length && !isUniverseValid[0].travelable){
-				winston.error(`This universe is marked as untravelable. Nothing will be found whatever empire data you'll pass. Exiting !`);
-				process.exit();
-			}
-			if(!availableRoutes)
-				await Toolbox.sleep(1000);
+		winston.log(`Waiting for end of precomputation.`);
+		var workSetStatus = await bufferDb.getWorkSetStatus();
+		while(!workSetStatus.precomputed){
+			workSetStatus = await bufferDb.getWorkSetStatus();
+			await Toolbox.sleep(1000);
 		}
-		winston.log(`BufferDb has got ${availableRoutes} available routes for processing. Continuing.`);
+
+		if(!workSetStatus.travelable){
+			winston.error(`This workset universe isn't travelable. That's a fatal. Exiting here.`);
+			process.exit();
+		}
+
+		winston.log(`Waiting at least one route.`);
+		var routeCount = await bufferDb.getRouteCount();
+		while(!routeCount){
+			routeCount = await bufferDb.getRouteCount();
+			await Toolbox.sleep(1000);
+		}
+		winston.log(`BufferDb has got ${routeCount} available routes for processing. Continuing.`);
 
 		winston.log(`Opening universe database.`);
-		var UniverseDb = new Db();
-		await UniverseDb.openDb(DataSet.MFalcon.routes_db);
+		var universeDb = new UniverseDb(Params.UniverseWorkDbPath);
+		await universeDb.open();
 
-		winston.log(`Intialising PathFinder from ${DataSet.MFalcon.departure} to ${DataSet.MFalcon.arrival} with an autonomy of ${DataSet.MFalcon.autonomy}`);
-		var pathFinder = new PathFinder(UniverseDb, DataSet.MFalcon);
+		winston.log(`Intialising PathFinder from ${dataSet.MFalcon.departure} to ${dataSet.MFalcon.arrival} with an autonomy of ${dataSet.MFalcon.autonomy}`);
+		var pathFinder = new PathFinder();
 
 		winston.log(`Pulling available routes from buffer db.`);
-		var routes = await BufferDb.selectRequest(`SELECT * FROM routes WHERE workset_hash=?`, [WorkSetHash]);
+		var routes = await bufferDb.getRoutes();
 
 		winston.log('List of available routes : ');
 		for(let i = 0; i < routes.length; i++)
@@ -87,8 +92,10 @@ var CliCall = async () => {
 
 		winston.log(`Finding out the best available waypoints on the ${routes.length} available routes.`);
 		var routeList = [];
+
+
 		for(let i = 0; i < routes.length; i++){
-			let routeRes = await pathFinder.computeOptimalWaypoints(DataSet.Empire, routes[i].route_slug.split('->'));
+			let routeRes = await pathFinder.computeOptimalWaypoints(universeDb, dataSet.MFalcon, dataSet.Empire, routes[i].route_slug.split('->'));
 			if(!routeRes) continue;
 
 			winston.log('Found a suitable route ! Adding it and sorting resulting array.');
@@ -102,9 +109,9 @@ var CliCall = async () => {
 
 		winston.log(`Processing finished. Formatting results for front end !`);
 		var formattedRoutesList = [];
-		if(routeList.length == 0) winston.warn(`Found no route suitable with an empire countdown of ${DataSet.Empire.countdown}.`);
+		if(routeList.length == 0) winston.warn(`Found no route suitable with an empire countdown of ${dataSet.Empire.countdown}.`);
 		else{
-			winston.log(`Found ${routeList.length} routes suitable with an empire countdown of ${DataSet.Empire.countdown}.`);
+			winston.log(`Found ${routeList.length} routes suitable with an empire countdown of ${dataSet.Empire.countdown}.`);
 			
 			for(let i = 0; i < routeList.length; i++)
 				formattedRoutesList.push(Toolbox.formatRoute(routeList[i]));
@@ -117,7 +124,7 @@ var CliCall = async () => {
 	}catch(err){ throw err; }
 }
 
-var ApiCall = async () => {
+var ApiCall = async (dataSet, bufferDb) => {
 	try{
 		var winston = Logger(`BackClientWorkerMain->API`, 1);
 		winston.log(`We were called from the api. Starting process.`);
@@ -131,7 +138,7 @@ var ApiCall = async () => {
 		winston.log(`Signalling to the API that we are ready to receive empire data.`);
 		process.once('message', empireIntel => { 
 			winston.log(`Got empire intel data.`); 
-			DataSet.Empire = empireIntel;
+			dataSet.Empire = empireIntel;
 		});
 		process.send('ready');
 
@@ -142,31 +149,20 @@ var ApiCall = async () => {
 		}, 5000);
 
 		winston.log(`Waiting for the client empire intel.`);
-		while(!DataSet.Empire) await Toolbox.sleep(50);
+		while(!dataSet.Empire) await Toolbox.sleep(50);
 		clearTimeout(timeoutHandle);
 
 		winston.log(`Got empire data ! Ready to ruuuuumble !`);
 
-		winston.log(`Polling BufferDb until we got a result from back db worker.`);
-		var availableRoutes = 0;
-		while(!availableRoutes){
-			availableRoutes = (await BufferDb.selectRequest(`SELECT count(*) as cnt FROM routes WHERE workset_hash=?`, [WorkSetHash]))[0].cnt;
-			if(!availableRoutes){
-				await Toolbox.sleep(1000);
-				winston.log(`BufferDb has got no available routes for processing. Waiting...`);
-			}
-		}
-		winston.log(`BufferDb has got ${availableRoutes} available routes for processing. Continuing.`);
-
 		winston.log(`Opening universe database.`);
-		var UniverseDb = new Db();
-		await UniverseDb.openDb(DataSet.MFalcon.routes_db);
+		var universeDb = new UniverseDb(Params.UniverseWorkDbPath);
+		await universeDb.open();
 
-		winston.log(`Intialising PathFinder from ${DataSet.MFalcon.departure} to ${DataSet.MFalcon.arrival} with an autonomy of ${DataSet.MFalcon.autonomy}`);
-		var pathFinder = new PathFinder(UniverseDb, DataSet.MFalcon);
+		winston.log(`Intialising PathFinder from ${dataSet.MFalcon.departure} to ${dataSet.MFalcon.arrival} with an autonomy of ${dataSet.MFalcon.autonomy}`);
+		var pathFinder = new PathFinder();
 
 		winston.log(`Pulling available routes from buffer db.`);
-		var routes = await BufferDb.selectRequest(`SELECT * FROM routes WHERE workset_hash=?`, [WorkSetHash]);
+		var routes = await bufferDb.getRoutes();
 
 		winston.log('List of available routes : ');
 		for(let i = 0; i < routes.length; i++)
@@ -182,7 +178,7 @@ var ApiCall = async () => {
 		winston.log(`Finding out the best available waypoints on the ${routes.length} available routes.`);
 		var routeList = [];
 		for(let i = 0; i < routes.length; i++){
-			let routeRes = await pathFinder.computeOptimalWaypoints(DataSet.Empire, routes[i].route_slug.split('->'));
+			let routeRes = await pathFinder.computeOptimalWaypoints(universeDb, dataSet.MFalcon, dataSet.Empire, routes[i].route_slug.split('->'));
 			if(!routeRes) continue;
 
 			winston.log('Found a suitable route ! Adding it and sorting resulting array.');
@@ -202,9 +198,9 @@ var ApiCall = async () => {
 
 		winston.log(`Processing finished. Formatting results for front end !`);
 		var formattedRoutesList = [];
-		if(routeList.length == 0) winston.warn(`Found no route suitable with an empire countdown of ${DataSet.Empire.countdown}.`);
+		if(routeList.length == 0) winston.warn(`Found no route suitable with an empire countdown of ${dataSet.Empire.countdown}.`);
 		else{
-			winston.log(`Found ${routeList.length} routes suitable with an empire countdown of ${DataSet.Empire.countdown}.`);
+			winston.log(`Found ${routeList.length} routes suitable with an empire countdown of ${dataSet.Empire.countdown}.`);
 			
 			for(let i = 0; i < routeList.length; i++)
 				formattedRoutesList.push(Toolbox.formatRoute(routeList[i]));

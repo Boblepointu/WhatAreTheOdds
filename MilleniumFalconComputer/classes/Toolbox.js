@@ -2,12 +2,41 @@
 
 module.exports = function(){
 	const Md5File = require('md5-file/promise');
-	const Md5 = require('md5');		
+	const Md5 = require('md5');
+	const Fs = require('fs');
 	const Path = require('path');
 	const AppDir = Path.dirname(require.main.filename);	
 	const Logger = require('./Logger.js');
 	const Config = require('../config.json');
 	const winston = new Logger('Toolbox');
+
+	this.deleteFile = path => {
+		return new Promise((resolve, reject) => {
+			try{
+				Fs.unlink(path, err => {
+					if(err){
+						reject(err);
+						return;
+					}
+					resolve();
+				})
+			}catch(err){ reject(err); }
+		});
+	}
+
+	this.copyFile = (sourcePath, destPath) => {
+		return new Promise((resolve, reject) => {
+			try{
+				let stream = Fs.createReadStream(sourcePath);
+				stream.once('error', reject);
+				stream.once('end', async () => {
+					await this.sleep(1000);
+					resolve();
+				});
+				stream.pipe(Fs.createWriteStream(destPath));
+			}catch(err){ reject(err); }
+		});
+	}
 
 	this.formatRoute = route => {
 		var formattedRoute = {
@@ -76,6 +105,7 @@ module.exports = function(){
 		params.SoftTimeoutSec = (parseInt(process.env.SOFT_TIMEOUT_SEC, 10) || process.env.SOFT_TIMEOUT_SEC) || Config.SoftTimeoutSec || 30;
 		params.MFalconConfigPath = process.env.MFALCON_CONFIG_PATH || Config.MFalconConfigPath || './dataset/millenium-falcon.json';
 		params.BufferDbPath = process.env.BUFFER_DB_PATH || Config.BufferDbPath || './dataset/buffer.db';
+		params.UniverseWorkDbPath = process.env.UNIVERSE_WORK_DB_PATH || Config.UniverseWorkDbPath || './dataset/universe_wrk.db';
 		params.LogLevel = process.env.LOG_LEVEL || Config.LogLevel || 4;
 		return params;
 	}

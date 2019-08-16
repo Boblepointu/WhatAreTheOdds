@@ -2,73 +2,97 @@
 
 const Logger = require('./classes/Logger.js');
 const PathFinder = require('./classes/PathFinder.js');
-const Db = require('./classes/Db.js');
+const UniverseDb = require('./classes/UniverseDb.js');
+const BufferDb = require('./classes/BufferDb.js');
 const Toolbox = new (require('./classes/Toolbox.js'))();
 
 const Params = Toolbox.getAppParams();
 
 const main = async () => {
-	var winston = Logger(`BackDbWorkerMain`, 1);
+	try{
+		var winston = Logger(`BackDbWorkerMain`, 1);
 
-	winston.log(`Retrieving Millenium Falcon attributes & Universe graph (${Params.MFalconConfigPath}).`);
-	var DataSet = { MFalcon: require(Params.MFalconConfigPath) };
+		winston.log(`Retrieving Millenium Falcon attributes & Universe graph (${Params.MFalconConfigPath}).`);
+		var DataSet = { MFalcon: require(Params.MFalconConfigPath) };
 
-	winston.log(`Generating universe db and Millenium Falcon hash.`);
-	var WorkSetHash = await Toolbox.getWorkSetHash(DataSet.MFalcon);
-	winston.log(`Db and Millenium Falcon hash is ${WorkSetHash}.`);
+		winston.log(`Generating universe db and Millenium Falcon hash.`);
+		var WorkSetHash = await Toolbox.getWorkSetHash(DataSet.MFalcon);
+		winston.log(`Db and Millenium Falcon hash is ${WorkSetHash}.`);
 
-	winston.log(`Opening universe database.`);
-	var UniverseDb = new Db();
-	await UniverseDb.openDb(DataSet.MFalcon.routes_db);
+		winston.log(`If work universe database exist, delete it. Should have been deleted at last close.`);
+		try{ await Toolbox.deleteFile(Params.UniverseWorkDbPath); }
+		catch(err){}
 
-	winston.log(`Opening buffer database.`);
-	var BufferDb = new Db();
-	await BufferDb.openDb(Params.BufferDbPath);
+		winston.log(`Copying universe database to work on temp file.`);
+		await Toolbox.copyFile(DataSet.MFalcon.routes_db, Params.UniverseWorkDbPath);
 
-	winston.log(`Checking if this Universe has already been fully explored.`);
-	var fullyExplored = await BufferDb.selectRequest(`SELECT * FROM fully_explored_universes WHERE workset_hash=?`, [WorkSetHash]);
-	if(fullyExplored.length){
-		winston.log(`This universe has already been fully explored. Stopping here.`);
+		winston.log(`Opening universe work database.`);
+		var universeWorkDb = new UniverseDb(Params.UniverseWorkDbPath);
+		await universeWorkDb.open();
+
+		winston.log(`Preparing universe work database for exploitation.`);
+		await universeWorkDb.prepareForExploitation();
+
+		winston.log(`Opening/Creating buffer database.`);
+		var bufferDb = new BufferDb(Params.BufferDbPath);
+		await bufferDb.open();
+		await bufferDb.setWorkSetHash(WorkSetHash);
+		var workSetStatus = await bufferDb.getWorkSetStatus();
+
+		winston.log(`Starting heavy pathfinding work.`);
+		var pathFinder = new PathFinder();
+
+		if(!workSetStatus.precomputed){
+			winston.log(`WorkSet isn't precomputed. Doing it.`);
+			var travelable = await pathFinder.precomputeUniverse(universeWorkDb, bufferDb, DataSet.MFalcon);
+			workSetStatus.precomputed = 1;
+			workSetStatus.travelable = travelable ? 1 : 0;
+			winston.log(`Marking this workset as ${travelable ? 'travelable' : ' not travelable'} and precomputed.`);
+			await bufferDb.updateWorkSetStatus(workSetStatus);
+		}
+
+		if(!workSetStatus.travelable){
+			winston.error(`This workset isn't travelable. No route will be found. Exiting here.`);
+			return;
+		}
+
+		if(!workSetStatus.quickly_explored){
+			winston.log(`WorkSet isn't quicky explored. Doing it.`);
+			await pathFinder.explore(
+				universeWorkDb
+				, bufferDb
+				, DataSet.MFalcon
+				, true
+				, async route => await bufferDb.insertRoute(route));
+			workSetStatus.quickly_explored = 1;
+			winston.log(`Marking this workset as quickly explored.`);
+			await bufferDb.updateWorkSetStatus(workSetStatus);
+			winston.log(`WorkSet universe is now quickly explored.`);
+		}
+
+		if(!workSetStatus.fully_explored){
+			winston.log(`WorkSet isn't fully explored. Doing it.`);
+			await pathFinder.explore(
+				universeWorkDb
+				, bufferDb
+				, DataSet.MFalcon
+				, false
+				, async route => await bufferDb.insertRoute(route));
+			workSetStatus.fully_explored = 1;
+			winston.log(`Marking this workset as fully explored.`);
+			await bufferDb.updateWorkSetStatus(workSetStatus);
+			winston.log(`WorkSet universe is now fully explored.`);
+		}
+
+		await bufferDb.close();
+
+		winston.log(`WorkSet is fully precomputed ! Houray \\o/ ! Exiting here.`);
+		return;
+	}catch(err){
+		console.log('FATAL ---->');
+		console.log(err);
 		process.exit();
 	}
-
-	var pathFinder = new PathFinder(UniverseDb, DataSet.MFalcon);
-
-	winston.log(`Checking if this universe is already explored.`);
-	var cnt = (await BufferDb.selectRequest(`SELECT count(*) as cnt FROM fully_explored_universes WHERE workset_hash=?`, [WorkSetHash]))[0].cnt;
-	if(cnt != 0){
-		winston.log(`This universe has already been fully explored ! Stopping here this worker.`);
-		process.exit();
-	}
-
-	winston.log(`Building in memory universe graph.`);
-	var isUniverseTravelable = (await pathFinder.buildGraph()) ? true : false;
-
-	if(!isUniverseTravelable){
-		await BufferDb.insertRequest(`INSERT INTO fully_explored_universes (workset_hash, travelable) VALUES (?, ?)`, [WorkSetHash, 0]);
-		winston.warn(`This universe isn't travelable. No route will be found between ${DataSet.MFalcon.departure} and ${DataSet.MFalcon.arrival}. Registering and exiting here.`);
-		process.exit();
-	}
-
-	winston.log(`Pulling already found routes.`);
-	var foundRoutes = await BufferDb.selectRequest(`SELECT * FROM routes WHERE workset_hash=?`, [WorkSetHash]);
-	var foundRoutesMap = {};
-	for(var i = 0; i < foundRoutes.length; i++)
-		foundRoutesMap[foundRoutes[i].route] = true;
-
-	winston.log(`Finding routes in this universe.`);
-	await pathFinder.findRoutes(async (route) => {
-		try{
-			var routeStr = route.join('->');
-			if(foundRoutesMap[routeStr]) return;
-
-			winston.log(`Found a new route (${routeStr}). Saving it into buffer db.`);
-			await BufferDb.insertRequest(`INSERT INTO routes (route_slug, workset_hash) VALUES (?, ?)`, [routeStr, WorkSetHash]);
-		}catch(err){ winston.error(err); }
-	});
-
-	winston.log(`This universe has fully been explored !`);
-	await BufferDb.insertRequest(`INSERT INTO fully_explored_universes (workset_hash, travelable) VALUES (?, ?)`, [WorkSetHash, 1]);
 };
 
 main();
