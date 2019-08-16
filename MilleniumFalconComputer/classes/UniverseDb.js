@@ -3,7 +3,7 @@
 module.exports = function(DbPath){
 	var Db = require('./Db.js');
 	var Logger = require('./Logger.js');
-	var winston = Logger(`UniverseDb`, 3);
+	var winston = Logger(`UniverseDb`, 4);
 
 	var db;
 
@@ -11,6 +11,12 @@ module.exports = function(DbPath){
 		winston.log(`Opening universe database at ${DbPath}.`);
 		db = new Db();
 		await db.openDb(DbPath);
+	}
+
+	this.getTravelTimes = async (from, to) => {
+		winston.log(`Getting travel times from ${from} to ${to}.`);
+		var tTimesO = await db.selectRequest(`SELECT travel_time FROM routes WHERE (origin=? AND destination=?) OR (origin=? AND destination=?) ORDER BY travel_time ASC`, [from, to, to, from]);
+		return tTimesO.map(row => row.travel_time);
 	}
 
 	this.markPulledFromIds = async ids => {

@@ -4,7 +4,7 @@ module.exports = function(DbPath){
 	var Fs = require('fs');
 	var Db = require('./Db.js');
 	var Logger = require('./Logger.js');
-	var winston = Logger(`BufferDb`, 3);
+	var winston = Logger(`BufferDb`, 4);
 
 	var db;
 	var worksetHashId;
@@ -57,6 +57,16 @@ module.exports = function(DbPath){
 		worksetHashId = (await db.selectRequest(`SELECT id FROM workset_hashs WHERE workset_hash=?`, [WorkSetHash]))[0].id
 	}
 
+	this.getRoutes = async () => {
+		winston.log(`Getting back all precalculed routes.`);
+		return await db.selectRequest(`SELECT * FROM routes WHERE workset_hash_id=?`, [worksetHashId]);
+	}
+
+	this.getRouteCount = async () => {
+		winston.log(`Getting back route count.`);
+		return (await db.selectRequest(`SELECT count(*) as cnt FROM routes WHERE workset_hash_id=?`, [worksetHashId]))[0].cnt;
+	}
+
 	this.setMultiPlanetHops = async (planets, hops) => {
 		winston.log(`Setting hops to ${hops} for ${planets.length} planets.`);
 		var valuesToInsert = [];
@@ -72,7 +82,7 @@ module.exports = function(DbPath){
 		var cnt = (await db.selectRequest(
 					`SELECT count(*) as cnt FROM routes WHERE route_slug=? AND workset_hash_id=?`, [routeSlug, worksetHashId]))[0].cnt;
 		if(cnt){
-			console.log(`Route ${routeSlug} already exist in database for this workset. Do nothing.`);
+			winston.log(`Route ${routeSlug} already exist in database for this workset. Do nothing.`);
 			return;
 		}
 		winston.log(`Inserting new route ${routeSlug}.`);

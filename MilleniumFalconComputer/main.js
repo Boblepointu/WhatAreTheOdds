@@ -2,7 +2,8 @@
 
 const Logger = require('./classes/Logger.js');
 const Toolbox = new (require('./classes/Toolbox.js'))();
-const Db = require('./classes/Db.js');
+const UniverseDb = require('./classes/UniverseDb.js');
+const BufferDb = require('./classes/BufferDb.js');
 const DbWorker = require('./classes/DbWorker.js');
 const ApiWorker = require('./classes/ApiWorker.js');
 const JasmineRuntime = require('./classes/JasmineRuntime.js');
@@ -31,50 +32,43 @@ var main = async () => {
 
 		// We launch the DB worker and wait for a minimum of one route
 		winston.log(`Initialising buffer database from ${Params.BufferDbPath}.`);
-		var BufferDb = new Db();
-		
-		// Creating, opening, populating BufferDb if not existing
-		if(!Fs.existsSync(Params.BufferDbPath)){
-			winston.log(`BufferDb does not exist. Creating and populating.`)
-			await BufferDb.createDb(Params.BufferDbPath);
-			await BufferDb.openDb(Params.BufferDbPath);
-			await BufferDb.execMultipleRequest(Fs.readFileSync('./buffer.db.sql', 'utf8'));
-		}else await BufferDb.openDb(Params.BufferDbPath);
-		
-		// Creating indexes on UniverseDb
-		winston.log(`Opening UniverseDb from ${MFalcon.routes_db}.`);
-		var UniverseDb = new Db();
-		await UniverseDb.openDb(MFalcon.routes_db);
-		winston.log(`Creating indexes on UniverseDb.`);
-		await UniverseDb.execMultipleRequest(`CREATE INDEX IF NOT EXISTS "full_index" ON "routes" ("origin", "destination")`);
-		await UniverseDb.closeDb();
 
 		// Generating hashes
 		winston.log(`Generating universe db and Millenium Falcon hash.`);
 		var WorkSetHash = await Toolbox.getWorkSetHash(MFalcon);
 		winston.log(`Db and Millenium Falcon hash is ${WorkSetHash}.`);
 
+		// Creating, opening, populating BufferDb if not existing
+		var bufferDb = new BufferDb(Params.BufferDbPath);
+		await bufferDb.open();
+		await bufferDb.setWorkSetHash(WorkSetHash);
+
 		winston.log(`Executing BackDbWorker.`);
 		await (new DbWorker()).spawn();
 		winston.log(`BackDbWorker spawned.`);
 
-		winston.log(`Polling BufferDb until we got a result from back db worker.`);
-		var availableRoutes = 0;
-		while(!availableRoutes){
-			availableRoutes = (await BufferDb.selectRequest(`SELECT count(*) as cnt FROM routes WHERE workset_hash=?`, [WorkSetHash]))[0].cnt;
-			var isUniverseValid = await BufferDb.selectRequest(`SELECT * FROM fully_explored_universes WHERE workset_hash=?`, [WorkSetHash]);
-			if(isUniverseValid.length && !isUniverseValid[0].travelable){
-				winston.error(`This universe is marked as untravelable. Nothing will be found whatever empire data you'll pass. Exiting !`);
-				process.exit();
-			}
-			if(!availableRoutes)
-				await Toolbox.sleep(1000);
+		winston.log(`Waiting for end of precomputation.`);
+		var workSetStatus = await bufferDb.getWorkSetStatus();
+		while(!workSetStatus.precomputed){
+			workSetStatus = await bufferDb.getWorkSetStatus()
+			await Toolbox.sleep(1000);
 		}
 
-		winston.log(`BufferDb has got ${availableRoutes} available routes for processing. Continuing.`);
+		if(!workSetStatus.travelable){
+			winston.error(`This workset universe isn't travelable. That's a fatal. Exiting here.`);
+			process.exit();
+		}
+
+		winston.log(`Waiting at least one route.`);
+		var routeCount = await bufferDb.getRouteCount();
+		while(!routeCount){
+			routeCount = await bufferDb.getRouteCount();
+			await Toolbox.sleep(1000);
+		}
+		winston.log(`BufferDb has got ${routeCount} available routes for processing. Continuing.`);
 
 		winston.log(`Closing BufferDb.`);
-		await BufferDb.closeDb();
+		await bufferDb.close();
 
 		winston.log(`Executing BackApiWorker.`);
 		await (new ApiWorker()).spawn();

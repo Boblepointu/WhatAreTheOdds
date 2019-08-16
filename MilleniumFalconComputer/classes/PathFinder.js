@@ -92,7 +92,8 @@ module.exports = function(){
 					}
 					else routesQueue.push(newRoute);
 				});
-				routesQueue.sort((rA, rB) => hopsMap[rA[rA.length-1]] - hopsMap[rB[rB.length-1]]);
+				if(!quickExplore)
+					routesQueue.sort((rA, rB) => hopsMap[rA[rA.length-1]] - hopsMap[rB[rB.length-1]]);
 
 				if(routesToReturn.length)
 					for(let i = 0; i < routesToReturn.length; i++)
@@ -104,14 +105,14 @@ module.exports = function(){
 		}catch(err){ throw err; }
 	}
 
-	this.computeOptimalWaypoints = async (Empire, route) => {
+	this.computeOptimalWaypoints = async (UniverseWorkDb, MFalcon, Empire, route) => {
 		var winston = new Logger('PathFinder->computeOptimalWaypoints', 3);
 		try{			
 			winston.log(`Computing optimal waypoints for route [${route.join('->')}].`);
 
 			var getLinkDistances = async (from, to) => {
 				try{
-					var results = await Db.selectRequest(`SELECT travel_time FROM routes WHERE (origin=? AND destination=?) OR (origin=? AND destination=?) ORDER BY travel_time ASC`, [from, to, to, from]);
+					return await UniverseWorkDb.getTravelTimes(from, to);
 					return results.map(r => r.travel_time);
 				}catch(err){ throw err; }
 			}
@@ -192,6 +193,8 @@ module.exports = function(){
 				// Get the first node in the heap.
 				let node = heap.shift();
 
+				//console.log(route, node)
+
 				// If we got a full path; end here.
 				if(node[1] == MFalcon.arrival){
 					// Reconstructing our path from last found node.
@@ -222,15 +225,14 @@ module.exports = function(){
 				// Identifying next planet distance.
 				let nextPlanetDistances = await getLinkDistances(node[1], nextPlanet);
 
-				let refualAlreadyAdded = false;
+
 				for(var i = 0; i < nextPlanetDistances; i++){
 					// If we havn't got needed fuel to go to next planet; add a refuel node to neighbors only if last neighbors isn't a refuel.
-					if(!refualAlreadyAdded && node[5] < nextPlanetDistances[i]){
+					if(node[5] < nextPlanetDistances[i] && node[0] != 1){
 						let refuelNode = [1, node[1], 1, node[3]+1, getHitCount(node[1], node[3]+1, node[3]+1)+node[4], MFalcon.autonomy, node[6]+1, await getHeuristicRisk(node[1], node[3]+1), node];
 						neighbors.push(refuelNode);
-						refualAlreadyAdded = true;
 					} 
-					// Else, add next planet to the neighbors list. In case of multiple links between these planet, add them all
+					// Add next planet to the neighbors list. In case of multiple links between these planet, add them all
 					if(node[5] >= nextPlanetDistances[i]) {
 						let passingByNode = [0, nextPlanet, nextPlanetDistances[i], node[3]+nextPlanetDistances[i], getHitCount(nextPlanet, node[3]+nextPlanetDistances[i], node[3]+nextPlanetDistances[i])+node[4], node[5]-nextPlanetDistances[i], node[6]+1, await getHeuristicRisk(node[1], node[3]+nextPlanetDistances[i]), node];
 						neighbors.push(passingByNode);

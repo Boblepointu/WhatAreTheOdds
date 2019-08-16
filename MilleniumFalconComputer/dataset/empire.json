@@ -1,5 +1,5 @@
 {
-  "countdown": 7,
+  "countdown": 100000,
   "bounty_hunters": [
     {
       "planet": "P0",
