@@ -23,7 +23,7 @@ module.exports = function(DbPath){
 					"id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
 					"route_slug"	TEXT NOT NULL,
 					"workset_hash_id"	INTEGER NOT NULL,
-					FOREIGN KEY("workset_hash_id") REFERENCES "workset_hashs"("id")
+					FOREIGN KEY("workset_hash_id") REFERENCES "workset_hashs"("id") ON DELETE CASCADE
 				);
 				CREATE TABLE IF NOT EXISTS "routes_queues" (
 					"id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
@@ -31,8 +31,8 @@ module.exports = function(DbPath){
 					"route_hop_count"	INTEGER NOT NULL,
 					"last_planet_id"	INTEGER NOT NULL,
 					"workset_hash_id"	INTEGER NOT NULL,
-					FOREIGN KEY("workset_hash_id") REFERENCES "workset_hashs"("id"),
-					FOREIGN KEY("last_planet_id") REFERENCES "planets_hops"("id")
+					FOREIGN KEY("workset_hash_id") REFERENCES "workset_hashs"("id") ON DELETE CASCADE,
+					FOREIGN KEY("last_planet_id") REFERENCES "planets_hops"("id") ON DELETE CASCADE
 				);
 				CREATE INDEX IF NOT EXISTS "routes_queues_route_slug_index" ON "routes_queues" ("route_slug");
 				CREATE INDEX IF NOT EXISTS "routes_queues_route_hop_count_index" ON "routes_queues" ("route_hop_count");
@@ -41,7 +41,7 @@ module.exports = function(DbPath){
 					"planet"	TEXT NOT NULL,
 					"hops_to_destination"	INTEGER NOT NULL,
 					"workset_hash_id"	INTEGER NOT NULL,
-					FOREIGN KEY("workset_hash_id") REFERENCES "workset_hashs"("id")
+					FOREIGN KEY("workset_hash_id") REFERENCES "workset_hashs"("id") ON DELETE CASCADE
 				);
 				CREATE INDEX IF NOT EXISTS "planets_hops_planet_index" ON "planets_hops" ("planet");
 				CREATE TABLE IF NOT EXISTS "workset_status" (
@@ -49,7 +49,7 @@ module.exports = function(DbPath){
 					"explored"	BOOLEAN NOT NULL,
 					"travelable"	BOOLEAN NOT NULL,
 					"workset_hash_id"	INTEGER NOT NULL UNIQUE,
-					FOREIGN KEY("workset_hash_id") REFERENCES "workset_hashs"("id")
+					FOREIGN KEY("workset_hash_id") REFERENCES "workset_hashs"("id") ON DELETE CASCADE
 				);
 				CREATE TABLE IF NOT EXISTS "workset_hashs" (
 					"id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
@@ -88,7 +88,7 @@ module.exports = function(DbPath){
 	this.pullRouteFromQueue = async () => {
 		winston.log(`Getting back best (closest to destination) route from queue.`);
 		
-		var result = (await db.selectRequest(`
+		var route = (await db.selectRequest(`
 			SELECT rq.id as id, rq.route_slug as route_slug, ph.hops_to_destination as hops_to_destination
 				FROM routes_queues rq
 				INNER JOIN planets_hops ph
@@ -97,12 +97,12 @@ module.exports = function(DbPath){
 				ORDER BY ph.hops_to_destination, rq.route_hop_count ASC
 				LIMIT 0,1`, [worksetHashId]))[0];
 
-		if(!result) return false;
+		if(!route) return false;
 
-		await db.deleteRequest(`DELETE FROM routes_queues WHERE id=? AND workset_hash_id=?`,[result.id, worksetHashId]);
-		result.route = result.route_slug.split('->');
-		delete result.route_slug;
-		return result;
+		await db.deleteRequest(`DELETE FROM routes_queues WHERE id=? AND workset_hash_id=?`,[route.id, worksetHashId]);
+		route.route = route.route_slug.split('->');
+		delete route.route_slug;
+		return route;
 	}
 
 	this.isRouteAlreadyInDb = async route => {
@@ -173,11 +173,6 @@ module.exports = function(DbPath){
 		var result = await db.selectRequest(`SELECT hops_to_destination FROM planets_hops WHERE planet=? AND workset_hash_id=?`, [planet, worksetHashId]);
 		if(result.length) return result[0].hops_to_destination;
 		return 0;
-	}
-
-	this.getAllHops = async () => {
-		winston.log(`Getting back all hops count.`);
-		return await db.selectRequest(`SELECT planet, hops_to_destination FROM planets_hops WHERE workset_hash_id=?`, [worksetHashId]);
 	}	
 
 	this.close = async () => {

@@ -75,7 +75,7 @@ module.exports = function(){
 				//console.log(`explore loop[pullRoute] => took ${(timeOut-timeIn)/1000}s`);
 				if(!currRoute) break;
 
-				let links = await UniverseWorkDb.getLinksWithPlanet(currRoute.route[currRoute.route.length-1]);
+				let links = await UniverseWorkDb.getLinksWithPlanet(currRoute.route[currRoute.route.length-1], MFalcon.autonomy);
 				timeOut = (new Date()).getTime();
 				//console.log(`explore loop[pullRoute->getLinks] => took ${(timeOut-timeIn)/1000}s`);
 				let planets = links.map(link => link.origin).concat(links.map(link => link.destination));

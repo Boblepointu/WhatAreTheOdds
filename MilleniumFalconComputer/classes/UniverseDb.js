@@ -41,11 +41,11 @@ module.exports = function(DbPath){
 				WHERE destination IN (${planetsStr}) OR origin IN (${planetsStr})`));
 	}
 
-	this.getLinksWithPlanet = async planet => {
+	this.getLinksWithPlanet = async (planet, maxTravelTime) => {
 		winston.log(`Querying links containing planet ${planet}.`);
 		return (await db.selectRequest(
 			`SELECT * FROM routes 
-				WHERE destination=? OR origin=?`, [planet, planet]));
+				WHERE (destination=? OR origin=?) AND travel_time<=?`, [planet, planet, maxTravelTime]));
 	}	
 
 	this.getRoutesCount = async () => {
