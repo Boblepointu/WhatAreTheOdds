@@ -14,47 +14,60 @@ module.exports = function(){
 
 			winston.log(`Pulling db slice by slice starting by our destination planet (${MFalcon.arrival}).`);
 
+			// Slice number. Will be incremented each loop step.
 			var hopCount = 1;
+			// Total number of link pulled.
 			var totalLinksPulled = 0;
+			// Number of time we cross MFalcon.arrival during the loop process
 			var directRoutesCount = 0;
+			// If we cross MFalcon.arrival during the process, this switch is turned to true.
 			var isDestinationReachable = false;
+			// List of planet we need to find in database for next loop.
 			var planetsToPollHashMap = { [MFalcon.arrival]: true };
-
+			// Registering the start node, MFalcon.arrival, with a hop to destination = 0.
 			await BufferDb.setMultiPlanetHops([MFalcon.arrival], 0);
-
+			// While we have planet to polls
 			while(Object.keys(planetsToPollHashMap).length){
+				// Get all links containing as origin or destination planets in planetToPollHashMap
 				let links = await UniverseWorkDb.getNotPulledLinksWithPlanets(Object.keys(planetsToPollHashMap));
+				// Incrementing totalLinksPulled
 				totalLinksPulled += links.length;
-
+				// Marking these links as pulled in universe work database
 				await UniverseWorkDb.markPulledFromIds(links.map(link => link.id));
-
+				// Discarding links with a travel time greater than MFalcon.autonomy
 				links = links.filter(link => link.travel_time <= MFalcon.autonomy);
-
+				// If links array is non empty, log status
 				if(links.length)
 					winston.log(`${((totalLinksPulled*100)/totalEntries).toFixed(2)}% => slice #${hopCount} Pulled ${totalLinksPulled} links from db, ${links.length} links qualify to this slice, given Millenium Falcon autonomy of ${MFalcon.autonomy} days.`);
-
+				// Extracting planets names from links
 				let planets = links.map(link => link.origin).concat(links.map(link => link.destination));
-
+				// Defining which planet we need to pull for next loop
 				let nextPlanetsToPollHashMap = {};
 				planets.forEach(async planet => {
+					// If planet is equal to MFalcon.departure and we havn't already registered this planet this loop, increment directRoutesCount
 					if(planet == MFalcon.departure && !planetsToPollHashMap[planet]) directRoutesCount++;
+					// If we havn't already registered this planet for next loop, do it
 					if(!planetsToPollHashMap[planet]) nextPlanetsToPollHashMap[planet] = true;
+					// If this planet is equal to MFalcon.departure, mark the graph as travelable by switching isDestinationReachable to true
 					if(planet == MFalcon.departure) isDestinationReachable = true;
 				});
-
+				// Convert next planet to poll hashmap to array
 				let nextPlanetsToPollArray = Object.keys(nextPlanetsToPollHashMap);
-
+				// If this array is not empty
 				if(nextPlanetsToPollArray.length){
+					// Save to buffer db the hop value for each one
 					await BufferDb.setMultiPlanetHops(nextPlanetsToPollArray, hopCount);
+					// Increment hopCount for next loop
 					hopCount++;
 				}
-
+				// Replace planets polled by the new set
 				planetsToPollHashMap = nextPlanetsToPollHashMap;
 			}
 
 			winston.log(`We pulled ${totalLinksPulled} links for search domain; the workset depth is ${hopCount} ${isDestinationReachable ? "and there is at least "+directRoutesCount+" route from "+MFalcon.departure+" to "+MFalcon.arrival : "and there is no route from "+MFalcon.departure+" to "+MFalcon.arrival}.`);
 			winston.log(`Note: a result < 100% means some planets arn't linked to our search domain or links are impracticable given MFalcon autonomy (from ${MFalcon.departure} to ${MFalcon.arrival} with ${MFalcon.autonomy} days of autonomy).`);			
 			
+			// Returning the boolean saying if our graph is travelable from MFalcon.arrival to MFalcon.departure
 			return isDestinationReachable;
 		}catch(err){ throw err; }
 	}
@@ -62,40 +75,56 @@ module.exports = function(){
 	this.explore = async (UniverseWorkDb, BufferDb, MFalcon) => {
 		var winston = new Logger(`PathFinder->explore`, 2);
 		try{
+			// Getting back the route queue size from buffer database
 			var routeQueueCount = await BufferDb.getRouteQueueCount();
+			// If no routes are already in queue
 			if(!routeQueueCount){
 				winston.log(`No route in queue. Initialising it.`);
+				// Initialising queue by adding a route with one node, MFalcon.departure
 				await BufferDb.addRoutesToQueue([[MFalcon.departure]]);
 			}
-
-			// Simple adapted Djikstra.
+			// Simple adapted Djikstra. Find all routes in graph.
 			while(true){
+				// Get the best available route in queue (ordered by closest to destination then smaller hops from departure)
 				let currRoute = await BufferDb.pullRouteFromQueue();
+				// If we got no route, the search is finished. Breaking the loop.
 				if(!currRoute) break;
-
+				// Getting back links associated with last planet in route
 				let links = await UniverseWorkDb.getLinksWithPlanet(currRoute.route[currRoute.route.length-1], MFalcon.autonomy);
+				// Extracting all planet names from these links
 				let planets = links.map(link => link.origin).concat(links.map(link => link.destination));
-				
+				// Filtering these planet name, excluding them if they are already in the route pulled before
 				let neighbors = planets.filter(planet => currRoute.route.indexOf(planet) == -1);
-
+				// Initialising new route array
 				let newRoutes = [];
-
+				// For each neighbor
 				for(let i = 0; i < neighbors.length; i++){
 					let currNeighbor = neighbors[i];
-
+					// Duplicate our route
 					let newRoute = currRoute.route.slice(0);
+					// Add current neighbor to it
 					newRoute.push(currNeighbor);
-
+					// If current neighbor is equal to MFalcon.arrival and route is not already saved in database
 					if(currNeighbor == MFalcon.arrival && !(await BufferDb.isRouteAlreadyInDb(newRoute))){
+						// Then we got a new route ! Log it
 						winston.log(`${newRoute.length - 1} hops : ${newRoute.join('->')}.`);
+						// Insert route to buffer database
 						await BufferDb.insertRoute(newRoute);
-					}else newRoutes.push(newRoute);
+					}
+					// Else, save this route for queue
+					else newRoutes.push(newRoute);
 				}
+				// Add all new routes to queue in buffer database
 				await BufferDb.addRoutesToQueue(newRoutes);
+				// Getting back route count in buffer database
 				let routesFound = await BufferDb.getRouteCount();
+				// If route count is >= of MaxPrecalculatedRoutes
 				if(routesFound >= Params.MaxPrecalculatedRoutes){
+					// Log it
 					winston.log(`Found ${routesFound} routes, hitted max precalculated route limit. Cleaning up routes queue and stopping here exploration.`);
+					// Empty buffer database queue
 					await BufferDb.cleanupQueue();
+					// Break the explore loop. We finished search here.
 					break;
 				}		
 			}

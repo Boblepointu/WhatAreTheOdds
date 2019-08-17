@@ -58,14 +58,11 @@ const main = async () => {
 
 		if(!workSetStatus.explored){
 			winston.log(`WorkSet isn't fully explored. Doing it.`);
-			await pathFinder.explore(
-				universeWorkDb
-				, bufferDb
-				, DataSet.MFalcon);
+			await pathFinder.explore(universeWorkDb, bufferDb, DataSet.MFalcon);
 			workSetStatus.explored = 1;
 			winston.log(`Marking this workset as explored.`);
 			await bufferDb.updateWorkSetStatus(workSetStatus);
-			winston.log(`WorkSet universe is now fully explored.`);
+			winston.log(`WorkSet universe is now fully explored (in the limit of the configuration 'MaxPrecalculatedRoutes' entry).`);
 		}
 
 		await bufferDb.close();

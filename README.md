@@ -112,8 +112,6 @@ docker run -p 3000:3000 -v /home/config.json:/app/MilleniumFalconComputer/config
 
 - As said before, a precalculation is done by the app at start. The biggest universes can't be fully explored, since we are playing on a NP-Complete problem. However, as time pass, more and more routes will be precalculated. It imply that on first start, you could have only one route to compute against. You must wait a few seconds/minute to get enough routes in buffer database to have a meaningfull result. Don't be afraid, with universes containing millions of entries it take roughly 10's of seconds to have a good enough sample.
 
-- Precalculation is done in two steps. First, quickly, by heading directly to from arrival to destination thank's to db pull slice by slice information. Second, it will search all available possibilities, taking as long as it needs.
-
 ## Configuration
 
 You can configure the app as wished by setting a few environment variables.

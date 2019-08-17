@@ -145,29 +145,6 @@ describe("Verifying universe database content.", function() {
 			else expect(true).toBe(true);
 			await UniverseDb.closeDb();
 		}catch(err){ expect(false).toBe(true); }
-	});	
-
-	it("has got a routes table", async function() {
-		try{
-			var mFalcon = JSON.parse(Fs.readFileSync(Params.MFalconConfigPath));
-			var UniverseDb = new Db();
-			await UniverseDb.openDb(mFalcon.routes_db);			
-			var routesTableExist = (await UniverseDb.selectRequest(`SELECT name FROM sqlite_master WHERE type='table' AND name='routes'`, []))[0] ? true : false;
-			if(!routesTableExist) throw "";
-			else expect(true).toBe(true);
-			await UniverseDb.closeDb();
-		}catch(err){ expect(false).toBe(true); }
-	});
-
-	it("has got 3 columns in route table", async function() {
-		try{
-			var mFalcon = JSON.parse(Fs.readFileSync(Params.MFalconConfigPath));
-			var UniverseDb = new Db();
-			await UniverseDb.openDb(mFalcon.routes_db);		
-			var routesTableColumns = await UniverseDb.selectRequest(`PRAGMA table_info(routes)`, []);
-			expect(routesTableColumns.length).toEqual(3);
-			await UniverseDb.closeDb();
-		}catch(err){ expect(false).toBe(true); }
 	});
 
 	it("has got 3 columns in route table", async function() {
@@ -250,7 +227,7 @@ describe("Verifying universe database content.", function() {
 		}catch(err){ expect(false).toBe(true); }
 	});	
 
-	it("contain valid data (only alphanumeric names, names length < 1000 positive travel times)", async function() {
+	it("contain valid data (only alphanumeric names, names length < 1000, positive travel times)", async function() {
 		try{
 			var mFalcon = JSON.parse(Fs.readFileSync(Params.MFalconConfigPath));
 			var UniverseDb = new Db();
