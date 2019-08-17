@@ -58,7 +58,7 @@ module.exports = function(){
 			chanceToBeCaptured = probaArray.reduce((acc, curr) => acc+curr);
 			formattedRoute.score.chanceToMakeIt = (1-chanceToBeCaptured)*100;
 		}else formattedRoute.score.chanceToMakeIt = 100;
-
+		formattedRoute.score.chanceToMakeIt = formattedRoute.score.chanceToMakeIt.toFixed(2);
 		// Generating route identifier
 		var identifierArray = [];
 		var currIdentifierArray = [];
