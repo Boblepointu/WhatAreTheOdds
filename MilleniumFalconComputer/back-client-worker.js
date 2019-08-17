@@ -95,7 +95,7 @@ var CliCall = async (dataSet, bufferDb) => {
 
 
 		for(let i = 0; i < routes.length; i++){
-			let routeRes = await pathFinder.computeOptimalWaypoints(universeDb, dataSet.MFalcon, dataSet.Empire, routes[i].route_slug.split('->'));
+			let routeRes = await pathFinder.compute(universeDb, dataSet.MFalcon, dataSet.Empire, routes[i].route_slug.split('->'));
 			if(!routeRes) continue;
 
 			winston.log('Found a suitable route ! Adding it and sorting resulting array.');
@@ -175,7 +175,7 @@ var ApiCall = async (dataSet, bufferDb) => {
 		winston.log(`Finding out the best available waypoints on the ${routes.length} available routes.`);
 		var routeList = [];
 		for(let i = 0; i < routes.length; i++){
-			let routeRes = await pathFinder.computeOptimalWaypoints(universeDb, dataSet.MFalcon, dataSet.Empire, routes[i].route_slug.split('->'));
+			let routeRes = await pathFinder.compute(universeDb, dataSet.MFalcon, dataSet.Empire, routes[i].route_slug.split('->'));
 			if(!routeRes) continue;
 
 			winston.log('Found a suitable route ! Adding it and sorting resulting array.');
@@ -186,7 +186,7 @@ var ApiCall = async (dataSet, bufferDb) => {
 				return (rALastNode.hitCount - rBLastNode.hitCount) || (rALastNode.travelTime - rBLastNode.travelTime);
 			});
 			let timeNow = (new Date()).getTime();
-			if((timeNow-timeStarted)>Params.SoftTimeoutSec*1000){
+			if((timeNow-timeStarted) > Params.SoftTimeoutSec*1000){
 				winston.log(`Hitted soft timeout of ${Params.SoftTimeoutSec} seconds. Finishing current compute and returning what we got.`);
 				break;
 			}

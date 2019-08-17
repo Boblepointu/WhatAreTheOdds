@@ -44,7 +44,7 @@ const main = async () => {
 
 		if(!workSetStatus.precomputed){
 			winston.log(`WorkSet isn't precomputed. Doing it.`);
-			var travelable = await pathFinder.precomputeUniverse(universeWorkDb, bufferDb, DataSet.MFalcon);
+			var travelable = await pathFinder.precompute(universeWorkDb, bufferDb, DataSet.MFalcon);
 			workSetStatus.precomputed = 1;
 			workSetStatus.travelable = travelable ? 1 : 0;
 			winston.log(`Marking this workset as ${travelable ? 'travelable' : ' not travelable'} and precomputed.`);
@@ -61,8 +61,7 @@ const main = async () => {
 			await pathFinder.explore(
 				universeWorkDb
 				, bufferDb
-				, DataSet.MFalcon
-				, async route => await bufferDb.insertRoute(route));
+				, DataSet.MFalcon);
 			workSetStatus.explored = 1;
 			winston.log(`Marking this workset as explored.`);
 			await bufferDb.updateWorkSetStatus(workSetStatus);
@@ -71,7 +70,7 @@ const main = async () => {
 
 		await bufferDb.close();
 
-		winston.log(`WorkSet is fully precomputed ! Houray \\o/ ! Exiting here.`);
+		winston.log(`WorkSet is fully precomputed and explored ! Houray \\o/ ! Exiting here.`);
 		return;
 	}catch(err){
 		console.log('FATAL ---->');

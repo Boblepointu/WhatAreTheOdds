@@ -42,6 +42,11 @@ describe("Verifying back-api.js parameters.", function() {
 		expect(Params.MaxSentRouteToClient).toEqual(jasmine.any(Number));
 		expect(Params.MaxSentRouteToClient > 0).toBe(true);
 	});
+
+	it("contains a valid (>0) integer 'MaxPrecalculatedRoutes' value", function() {
+		expect(Params.MaxPrecalculatedRoutes).toEqual(jasmine.any(Number));
+		expect(Params.MaxPrecalculatedRoutes > 0).toBe(true);
+	});	
 });
 
 describe("Verifying back-client-worker.js parameters.", function() {
@@ -64,6 +69,8 @@ describe("Verifying back-client-worker.js parameters.", function() {
 		expect(Params.MFalconConfigPath).toEqual(jasmine.any(String));
 		expect(IsValidPath(Params.MFalconConfigPath)).toBe(true);
 	});
+
+
 });
 
 describe("Verifying Millenium Falcon config file.", function() {

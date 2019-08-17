@@ -2,9 +2,10 @@
 
 module.exports = function(){
 	const Logger = require('./Logger.js');
-	const Config = require('../config.json');
+	const Toolbox = new (require('./Toolbox.js'))();
+	const Params = Toolbox.getAppParams();
 
-	this.precomputeUniverse = async (UniverseWorkDb, BufferDb, MFalcon) => {
+	this.precompute = async (UniverseWorkDb, BufferDb, MFalcon) => {
 		var winston = Logger('PathFinder->precomputeUniverse', 2);
 		try{
 			// Finding out how much entries we got in the provided database.
@@ -58,7 +59,7 @@ module.exports = function(){
 		}catch(err){ throw err; }
 	}
 
-	this.explore = async (UniverseWorkDb, BufferDb, MFalcon, cb) => {
+	this.explore = async (UniverseWorkDb, BufferDb, MFalcon) => {
 		var winston = new Logger(`PathFinder->explore`, 2);
 		try{
 			var routeQueueCount = await BufferDb.getRouteQueueCount();
@@ -69,15 +70,10 @@ module.exports = function(){
 
 			// Simple adapted Djikstra.
 			while(true){
-				var timeIn = (new Date()).getTime();
 				let currRoute = await BufferDb.pullRouteFromQueue();
-				var timeOut = (new Date()).getTime();
-				//console.log(`explore loop[pullRoute] => took ${(timeOut-timeIn)/1000}s`);
 				if(!currRoute) break;
 
 				let links = await UniverseWorkDb.getLinksWithPlanet(currRoute.route[currRoute.route.length-1], MFalcon.autonomy);
-				timeOut = (new Date()).getTime();
-				//console.log(`explore loop[pullRoute->getLinks] => took ${(timeOut-timeIn)/1000}s`);
 				let planets = links.map(link => link.origin).concat(links.map(link => link.destination));
 				
 				let neighbors = planets.filter(planet => currRoute.route.indexOf(planet) == -1);
@@ -92,12 +88,16 @@ module.exports = function(){
 
 					if(currNeighbor == MFalcon.arrival && !(await BufferDb.isRouteAlreadyInDb(newRoute))){
 						winston.log(`${newRoute.length - 1} hops : ${newRoute.join('->')}.`);
-						await cb(newRoute);
+						await BufferDb.insertRoute(newRoute);
 					}else newRoutes.push(newRoute);
 				}
 				await BufferDb.addRoutesToQueue(newRoutes);
-				timeOut = (new Date()).getTime();
-				//console.log(`explore loop[pullRoute->getLinks->addRoutes] => took ${(timeOut-timeIn)/1000}s`);		
+				let routesFound = await BufferDb.getRouteCount();
+				if(routesFound >= Params.MaxPrecalculatedRoutes){
+					winston.log(`Found ${routesFound} routes, hitted max precalculated route limit. Cleaning up routes queue and stopping here exploration.`);
+					await BufferDb.cleanupQueue();
+					break;
+				}		
 			}
 
 			winston.log(`${await BufferDb.getRouteCount()} routes found !`);
@@ -105,7 +105,7 @@ module.exports = function(){
 		}catch(err){ throw err; }
 	}
 
-	this.computeOptimalWaypoints = async (UniverseWorkDb, MFalcon, Empire, route) => {
+	this.compute = async (UniverseWorkDb, MFalcon, Empire, route) => {
 		var winston = new Logger('PathFinder->computeOptimalWaypoints', 3);
 		try{			
 			winston.log(`Computing optimal waypoints for route [${route.join('->')}].`);

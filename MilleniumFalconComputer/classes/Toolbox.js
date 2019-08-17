@@ -101,13 +101,14 @@ module.exports = function(){
 		params.MaxSimultaneousComputation = (parseInt(process.env.MAX_SIMULTANEOUS_COMPUTATION, 10) || process.env.MAX_SIMULTANEOUS_COMPUTATION) || Config.MaxSimultaneousComputation || 10;
 		params.AllowAllAccessControlOrigins = (parseInt(process.env.ALLOW_ALL_ACCESS_CONTROL_ORIGIN, 10) || process.env.ALLOW_ALL_ACCESS_CONTROL_ORIGIN) || Config.AllowAllAccessControlOrigins || 0;
 		params.MaxSentRouteToClient = (parseInt(process.env.MAX_SENT_ROUTE_TO_CLIENT, 10) || process.env.MAX_SENT_ROUTE_TO_CLIENT) || Config.MaxSentRouteToClient || 10;
+		params.MaxPrecalculatedRoutes = (parseInt(process.env.MAX_PRECALCULATED_ROUTES, 10) || process.env.MAX_PRECALCULATED_ROUTES) || Config.MaxPrecalculatedRoutes || 10;
 		params.HardTimeoutSec = (parseInt(process.env.HARD_TIMEOUT_SEC, 10) || process.env.HARD_TIMEOUT_SEC) || Config.HardTimeoutSec || 60;
 		params.SoftTimeoutSec = (parseInt(process.env.SOFT_TIMEOUT_SEC, 10) || process.env.SOFT_TIMEOUT_SEC) || Config.SoftTimeoutSec || 30;
 		params.MFalconConfigPath = process.env.MFALCON_CONFIG_PATH || Config.MFalconConfigPath || './dataset/millenium-falcon.json';
 		params.BufferDbPath = process.env.BUFFER_DB_PATH || Config.BufferDbPath || './dataset/buffer.db';
 		params.UniverseWorkDbPath = process.env.UNIVERSE_WORK_DB_PATH || Config.UniverseWorkDbPath || './dataset/universe_wrk.db';
 		params.LogLevel = process.env.LOG_LEVEL || Config.LogLevel || 2;
-		params.DryRun = (parseInt(process.env.DRY_RUN, 10) || process.env.DRY_RUN) || Config.DryRun || 0;		
+		params.DryRun = (parseInt(process.env.DRY_RUN, 10) || process.env.DRY_RUN) || Config.DryRun || 0;
 		return params;
 	}
 

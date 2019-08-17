@@ -19,42 +19,42 @@ module.exports = function(DbPath){
 			await db.openDb(DbPath);
 			await db.execMultipleRequest(`
 				BEGIN TRANSACTION;
-				CREATE TABLE IF NOT EXISTS "routes" (
-					"id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
-					"route_slug"	TEXT NOT NULL,
-					"workset_hash_id"	INTEGER NOT NULL,
-					FOREIGN KEY("workset_hash_id") REFERENCES "workset_hashs"("id") ON DELETE CASCADE
-				);
-				CREATE TABLE IF NOT EXISTS "routes_queues" (
-					"id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
-					"route_slug"	TEXT NOT NULL,
-					"route_hop_count"	INTEGER NOT NULL,
-					"last_planet_id"	INTEGER NOT NULL,
-					"workset_hash_id"	INTEGER NOT NULL,
-					FOREIGN KEY("workset_hash_id") REFERENCES "workset_hashs"("id") ON DELETE CASCADE,
-					FOREIGN KEY("last_planet_id") REFERENCES "planets_hops"("id") ON DELETE CASCADE
-				);
-				CREATE INDEX IF NOT EXISTS "routes_queues_route_slug_index" ON "routes_queues" ("route_slug");
-				CREATE INDEX IF NOT EXISTS "routes_queues_route_hop_count_index" ON "routes_queues" ("route_hop_count");
-				CREATE TABLE IF NOT EXISTS "planets_hops" (
-					"id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
-					"planet"	TEXT NOT NULL,
-					"hops_to_destination"	INTEGER NOT NULL,
-					"workset_hash_id"	INTEGER NOT NULL,
-					FOREIGN KEY("workset_hash_id") REFERENCES "workset_hashs"("id") ON DELETE CASCADE
-				);
-				CREATE INDEX IF NOT EXISTS "planets_hops_planet_index" ON "planets_hops" ("planet");
-				CREATE TABLE IF NOT EXISTS "workset_status" (
-					"precomputed"	BOOLEAN NOT NULL,
-					"explored"	BOOLEAN NOT NULL,
-					"travelable"	BOOLEAN NOT NULL,
-					"workset_hash_id"	INTEGER NOT NULL UNIQUE,
-					FOREIGN KEY("workset_hash_id") REFERENCES "workset_hashs"("id") ON DELETE CASCADE
-				);
-				CREATE TABLE IF NOT EXISTS "workset_hashs" (
-					"id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
-					"workset_hash"	TEXT NOT NULL
-				);
+					CREATE TABLE IF NOT EXISTS "routes" (
+						"id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
+						"route_slug"	TEXT NOT NULL,
+						"workset_hash_id"	INTEGER NOT NULL,
+						FOREIGN KEY("workset_hash_id") REFERENCES "workset_hashs"("id") ON DELETE CASCADE
+					);
+					CREATE TABLE IF NOT EXISTS "routes_queues" (
+						"id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
+						"route_slug"	TEXT NOT NULL,
+						"route_hop_count"	INTEGER NOT NULL,
+						"last_planet_id"	INTEGER NOT NULL,
+						"workset_hash_id"	INTEGER NOT NULL,
+						FOREIGN KEY("workset_hash_id") REFERENCES "workset_hashs"("id") ON DELETE CASCADE,
+						FOREIGN KEY("last_planet_id") REFERENCES "planets_hops"("id") ON DELETE CASCADE
+					);
+					CREATE INDEX IF NOT EXISTS "routes_queues_route_slug_index" ON "routes_queues" ("route_slug");
+					CREATE INDEX IF NOT EXISTS "routes_queues_route_hop_count_index" ON "routes_queues" ("route_hop_count");
+					CREATE TABLE IF NOT EXISTS "planets_hops" (
+						"id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
+						"planet"	TEXT NOT NULL,
+						"hops_to_destination"	INTEGER NOT NULL,
+						"workset_hash_id"	INTEGER NOT NULL,
+						FOREIGN KEY("workset_hash_id") REFERENCES "workset_hashs"("id") ON DELETE CASCADE
+					);
+					CREATE INDEX IF NOT EXISTS "planets_hops_planet_index" ON "planets_hops" ("planet");
+					CREATE TABLE IF NOT EXISTS "workset_status" (
+						"precomputed"	BOOLEAN NOT NULL,
+						"explored"	BOOLEAN NOT NULL,
+						"travelable"	BOOLEAN NOT NULL,
+						"workset_hash_id"	INTEGER NOT NULL UNIQUE,
+						FOREIGN KEY("workset_hash_id") REFERENCES "workset_hashs"("id") ON DELETE CASCADE
+					);
+					CREATE TABLE IF NOT EXISTS "workset_hashs" (
+						"id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
+						"workset_hash"	TEXT NOT NULL
+					);
 				COMMIT;				
 			`);
 		}else await db.openDb(DbPath);
@@ -103,6 +103,11 @@ module.exports = function(DbPath){
 		route.route = route.route_slug.split('->');
 		delete route.route_slug;
 		return route;
+	}
+
+	this.cleanupQueue = async () => {
+		winston.log(`Cleaning up queue for this workset.`);
+		await db.deleteRequest(`DELETE FROM routes_queues WHERE workset_hash_id=?`, [worksetHashId]);
 	}
 
 	this.isRouteAlreadyInDb = async route => {
