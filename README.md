@@ -145,11 +145,11 @@ You can also hard set these variables into [./MilleniumFalconComputer/config.jso
   - Example value : 0 or 1
   - Description : Dry run. Will delete buffer database at start if set to 1.
 
-#### MaxSentRouteToClient
-  - Config file entry : "MaxSentRouteToClient"
-  - Environment variable : MAX_SENT_ROUTE_TO_CLIENT
-  - Example value : 50
-  - Description : How many computed routes will we display front side ?
+#### MFalconConfigPath
+  - Config file entry : "MFalconConfigPath"
+  - Environment variable : MFALCON_CONFIG_PATH
+  - Example value : "./dataset/millenium-falcon.json"
+  - Description : Path of the `millenium-falcon.json` file. Must be relative to `MilleniumFalconComputer` folder.
 
 #### MaxSentRouteToClient
   - Config file entry : "MaxSentRouteToClient"
