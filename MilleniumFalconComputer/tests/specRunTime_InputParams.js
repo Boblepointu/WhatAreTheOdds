@@ -236,7 +236,7 @@ describe("Verifying universe database content.", function() {
 		}catch(err){ expect(false).toBe(true); }
 	});	
 
-	it("contain valid data (only alphanumeric names, positive travel times)", async function() {
+	it("contain valid data (only alphanumeric names, names length < 1000 positive travel times)", async function() {
 		try{
 			var mFalcon = JSON.parse(Fs.readFileSync(Params.MFalconConfigPath));
 			var UniverseDb = new Db();
@@ -246,6 +246,8 @@ describe("Verifying universe database content.", function() {
 			for(let i = 0; i < routes.length; i++){
 				expect(Validator.isAlphanumeric(routes[i].origin)).toBe(true);
 				expect(Validator.isAlphanumeric(routes[i].destination)).toBe(true);
+				expect(routes[i].origin.length < 1000).toBe(true);
+				expect(routes[i].destination.length < 1000).toBe(true);
 				expect(routes[i].travel_time).toEqual(jasmine.any(Number));
 				expect(routes[i].travel_time >= 0).toBe(true);
 			}

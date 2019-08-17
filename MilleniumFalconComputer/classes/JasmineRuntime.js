@@ -46,7 +46,7 @@ module.exports = async function(specFile, params, _useFullFledgedReporter){
 		helpers: ['helpers/**/*.js'],
 		random: false,
 		seed: null,
-		stopSpecOnExpectationFailure: false
+		stopSpecOnExpectationFailure: true
 	});
 
 	const Reporter = new JasmineConsoleReporter({
