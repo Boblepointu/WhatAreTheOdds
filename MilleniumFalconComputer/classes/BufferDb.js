@@ -113,7 +113,6 @@ module.exports = function(DbPath){
 
 	this.getRouteQueueCount = async () => {
 		winston.log(`Getting back route count from queue.`);
-		console.log('count')
 		return (await db.selectRequest(`SELECT count(*) as cnt FROM routes_queues WHERE workset_hash_id=?`, [worksetHashId]))[0].cnt;
 	}
 

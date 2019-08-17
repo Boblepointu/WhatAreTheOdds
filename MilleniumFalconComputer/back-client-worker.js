@@ -170,11 +170,8 @@ var ApiCall = async (dataSet, bufferDb) => {
 
 
 		winston.log(`Safeguarding with a soft timeout of ${Params.SoftTimeoutSec} seconds.`);
-		var softTimeoutReached = false;
-		var softTimeoutHandle = setTimeout(() => { 
-			winston.log(`Hitted soft timeout of ${Params.SoftTimeoutSec} seconds. Finishing current compute and returning what we got.`);
-			softTimeoutReached = true;
-		}, Params.SoftTimeoutSec*1000);
+		var timeStarted = (new Date()).getTime();
+
 		winston.log(`Finding out the best available waypoints on the ${routes.length} available routes.`);
 		var routeList = [];
 		for(let i = 0; i < routes.length; i++){
@@ -188,11 +185,13 @@ var ApiCall = async (dataSet, bufferDb) => {
 				var rBLastNode = rB[rB.length-1];
 				return (rALastNode.hitCount - rBLastNode.hitCount) || (rALastNode.travelTime - rBLastNode.travelTime);
 			});
-			if(softTimeoutReached) break;
+			let timeNow = (new Date()).getTime();
+			if((timeNow-timeStarted)>Params.SoftTimeoutSec*1000){
+				winston.log(`Hitted soft timeout of ${Params.SoftTimeoutSec} seconds. Finishing current compute and returning what we got.`);
+				break;
+			}
 		}
 
-		winston.log(`Clearing soft timeout.`);
-		clearTimeout(softTimeoutHandle);
 		winston.log(`Clearing hard timeout.`);
 		clearTimeout(hardTimeoutHandle);
 

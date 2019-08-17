@@ -97,7 +97,7 @@ module.exports = function(){
 				}
 				await BufferDb.addRoutesToQueue(newRoutes);
 				timeOut = (new Date()).getTime();
-				console.log(`explore loop[pullRoute->getLinks->addRoutes] => took ${(timeOut-timeIn)/1000}s`);		
+				//console.log(`explore loop[pullRoute->getLinks->addRoutes] => took ${(timeOut-timeIn)/1000}s`);		
 			}
 
 			winston.log(`${await BufferDb.getRouteCount()} routes found !`);
