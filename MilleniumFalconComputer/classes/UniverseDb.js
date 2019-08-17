@@ -68,7 +68,8 @@ module.exports = function(DbPath){
 					SELECT origin, destination, travel_time FROM routes;
 				DROP TABLE routes;
 				ALTER TABLE routes_tmp RENAME TO routes;
-				CREATE INDEX IF NOT EXISTS "full_index" ON "routes" ("origin", "destination");
+				CREATE INDEX IF NOT EXISTS "routes_origin_index" ON "routes" ("origin");
+				CREATE INDEX IF NOT EXISTS "routes_destination_index" ON "routes" ("destination");
 			COMMIT;
 		`);
 	}

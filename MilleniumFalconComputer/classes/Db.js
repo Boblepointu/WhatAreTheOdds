@@ -42,17 +42,12 @@ module.exports = function(){
 				winston.log(`Executing insert request ${(req.length <= 30) ? req : req.substring(0, 30)+'[..]'+req.substring(req.length-30)}.`);
 				if(!params) params = [];
 				var statement = db.prepare(req);
-
-				(db.transaction(() => {
-					try{
-						statement.run(params);
-						resolve();
-					}catch(err){
-						winston.error(`Error inserting database with request "${req}" and params "${params.join(', ')}".`);
-						reject(err);
-					}
-				}))();
-			}catch(err){ reject(err); }
+				statement.run(params);
+				resolve();
+			}catch(err){
+				winston.error(`Error inserting database with request "${req}" and params "${params.join(', ')}".`);
+				reject(err);
+			}
 		});
 	}
 
@@ -62,17 +57,12 @@ module.exports = function(){
 				winston.log(`Executing update request ${(req.length <= 30) ? req : req.substring(0, 30)+'[..]'+req.substring(req.length-30)}.`);
 				if(!params) params = [];
 				var statement = db.prepare(req);
-
-				(db.transaction(() => {
-					try{
-						statement.run(params);
-						resolve();
-					}catch(err){
-						winston.error(`Error updating database with request "${req}" and params "${params.join(', ')}".`);
-						reject(err);
-					}
-				}))();
-			}catch(err){ reject(err); }
+				statement.run(params);
+				resolve();
+			}catch(err){
+				winston.error(`Error updating database with request "${req}" and params "${params.join(', ')}".`);
+				reject(err);
+			}
 		});
 	}
 

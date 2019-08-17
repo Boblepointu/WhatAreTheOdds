@@ -29,17 +29,16 @@ module.exports = function(){
 
 				links = links.filter(link => link.travel_time <= MFalcon.autonomy);
 
-				winston.log(`${((totalLinksPulled*100)/totalEntries).toFixed(2)}% => slice #${hopCount} Pulled ${totalLinksPulled} links from db, ${links.length} links qualify to this slice, given Millenium Falcon autonomy of ${MFalcon.autonomy} days.`);
+				if(links.length)
+					winston.log(`${((totalLinksPulled*100)/totalEntries).toFixed(2)}% => slice #${hopCount} Pulled ${totalLinksPulled} links from db, ${links.length} links qualify to this slice, given Millenium Falcon autonomy of ${MFalcon.autonomy} days.`);
 
 				let planets = links.map(link => link.origin).concat(links.map(link => link.destination));
 
 				let nextPlanetsToPollHashMap = {};
 				planets.forEach(async planet => {
+					if(planet == MFalcon.departure && !planetsToPollHashMap[planet]) directRoutesCount++;
 					if(!planetsToPollHashMap[planet]) nextPlanetsToPollHashMap[planet] = true;
-					if(planet == MFalcon.departure){
-						isDestinationReachable = true;
-						directRoutesCount++;
-					}
+					if(planet == MFalcon.departure) isDestinationReachable = true;
 				});
 
 				let nextPlanetsToPollArray = Object.keys(nextPlanetsToPollHashMap);
@@ -59,48 +58,49 @@ module.exports = function(){
 		}catch(err){ throw err; }
 	}
 
-	this.explore = async (UniverseWorkDb, BufferDb, MFalcon, quickExplore, cb) => {
-		var winston = new Logger(`PathFinder->${quickExplore?'quickExplore':'fullExplore'}`, 2);
+	this.explore = async (UniverseWorkDb, BufferDb, MFalcon, cb) => {
+		var winston = new Logger(`PathFinder->explore`, 2);
 		try{
-			var completeRoutes = {};
-			var routesToReturn = [];
-			var routesFound = 0;
-			var routesQueue = [ [MFalcon.departure] ];
-			var hopsMap = {};
-			(await BufferDb.getAllHops())
-				.forEach(row => hopsMap[row.planet] = row.hops);
-
-			// Simple adapted Djikstra.
-			while(routesQueue.length){
-				let currRoute = routesQueue.shift();
-				let currRouteLastPlanet = currRoute[currRoute.length-1];
-				let links = await UniverseWorkDb.getLinksWithPlanet(currRouteLastPlanet);
-				let planets = links.map(link => link.origin).concat(links.map(link => link.destination));
-				let neighbors = planets.filter(planet => currRoute.indexOf(planet) == -1);
-				neighbors.forEach(neighbor => {
-					if(quickExplore && hopsMap[neighbor] >= hopsMap[currRouteLastPlanet]) return;
-
-					let newRoute = currRoute.slice(0);
-					newRoute.push(neighbor);
-
-					let newRouteStr = newRoute.join('->');
-					if(neighbor == MFalcon.arrival && !completeRoutes[newRouteStr]){
-						completeRoutes[newRouteStr] = newRoute;
-						routesToReturn.push(newRoute);
-						routesFound++;
-						winston.log(`${newRoute.length - 1} hops : ${newRouteStr}.`);
-					}
-					else routesQueue.push(newRoute);
-				});
-				if(!quickExplore)
-					routesQueue.sort((rA, rB) => hopsMap[rA[rA.length-1]] - hopsMap[rB[rB.length-1]]);
-
-				if(routesToReturn.length)
-					for(let i = 0; i < routesToReturn.length; i++)
-						await cb(routesToReturn.shift());
+			var routeQueueCount = await BufferDb.getRouteQueueCount();
+			if(!routeQueueCount){
+				winston.log(`No route in queue. Initialising it.`);
+				await BufferDb.addRoutesToQueue([[MFalcon.departure]]);
 			}
 
-			winston.log(`${routesFound} routes found !`);
+			// Simple adapted Djikstra.
+			while(true){
+				var timeIn = (new Date()).getTime();
+				let currRoute = await BufferDb.pullRouteFromQueue();
+				var timeOut = (new Date()).getTime();
+				//console.log(`explore loop[pullRoute] => took ${(timeOut-timeIn)/1000}s`);
+				if(!currRoute) break;
+
+				let links = await UniverseWorkDb.getLinksWithPlanet(currRoute.route[currRoute.route.length-1]);
+				timeOut = (new Date()).getTime();
+				//console.log(`explore loop[pullRoute->getLinks] => took ${(timeOut-timeIn)/1000}s`);
+				let planets = links.map(link => link.origin).concat(links.map(link => link.destination));
+				
+				let neighbors = planets.filter(planet => currRoute.route.indexOf(planet) == -1);
+
+				let newRoutes = [];
+
+				for(let i = 0; i < neighbors.length; i++){
+					let currNeighbor = neighbors[i];
+
+					let newRoute = currRoute.route.slice(0);
+					newRoute.push(currNeighbor);
+
+					if(currNeighbor == MFalcon.arrival && !(await BufferDb.isRouteAlreadyInDb(newRoute))){
+						winston.log(`${newRoute.length - 1} hops : ${newRoute.join('->')}.`);
+						await cb(newRoute);
+					}else newRoutes.push(newRoute);
+				}
+				await BufferDb.addRoutesToQueue(newRoutes);
+				timeOut = (new Date()).getTime();
+				console.log(`explore loop[pullRoute->getLinks->addRoutes] => took ${(timeOut-timeIn)/1000}s`);		
+			}
+
+			winston.log(`${await BufferDb.getRouteCount()} routes found !`);
 			return;
 		}catch(err){ throw err; }
 	}

@@ -56,30 +56,15 @@ const main = async () => {
 			return;
 		}
 
-		if(!workSetStatus.quickly_explored){
-			winston.log(`WorkSet isn't quicky explored. Doing it.`);
-			await pathFinder.explore(
-				universeWorkDb
-				, bufferDb
-				, DataSet.MFalcon
-				, true
-				, async route => await bufferDb.insertRoute(route));
-			workSetStatus.quickly_explored = 1;
-			winston.log(`Marking this workset as quickly explored.`);
-			await bufferDb.updateWorkSetStatus(workSetStatus);
-			winston.log(`WorkSet universe is now quickly explored.`);
-		}
-
-		if(!workSetStatus.fully_explored){
+		if(!workSetStatus.explored){
 			winston.log(`WorkSet isn't fully explored. Doing it.`);
 			await pathFinder.explore(
 				universeWorkDb
 				, bufferDb
 				, DataSet.MFalcon
-				, false
 				, async route => await bufferDb.insertRoute(route));
-			workSetStatus.fully_explored = 1;
-			winston.log(`Marking this workset as fully explored.`);
+			workSetStatus.explored = 1;
+			winston.log(`Marking this workset as explored.`);
 			await bufferDb.updateWorkSetStatus(workSetStatus);
 			winston.log(`WorkSet universe is now fully explored.`);
 		}

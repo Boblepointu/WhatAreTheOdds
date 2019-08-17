@@ -60,7 +60,7 @@ var CliCall = async (dataSet, bufferDb) => {
 		var workSetStatus = await bufferDb.getWorkSetStatus();
 		while(!workSetStatus.precomputed){
 			workSetStatus = await bufferDb.getWorkSetStatus();
-			await Toolbox.sleep(1000);
+			await Toolbox.sleep(200);
 		}
 
 		if(!workSetStatus.travelable){
@@ -72,7 +72,7 @@ var CliCall = async (dataSet, bufferDb) => {
 		var routeCount = await bufferDb.getRouteCount();
 		while(!routeCount){
 			routeCount = await bufferDb.getRouteCount();
-			await Toolbox.sleep(1000);
+			await Toolbox.sleep(200);
 		}
 		winston.log(`BufferDb has got ${routeCount} available routes for processing. Continuing.`);
 
