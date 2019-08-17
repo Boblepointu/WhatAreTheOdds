@@ -108,6 +108,20 @@ module.exports = function(){
 		});
 	}
 
+	this.selectIteratorRequest = (req, params, cb) => {
+		return new Promise((resolve, reject) => {
+			try{
+				winston.log(`Executing select request ${(req.length <= 30) ? req : req.substring(0, 30)+'[..]'+req.substring(req.length-30)}.`);
+				var statement = db.prepare(req);
+				for(const row of statement.iterate()) cb(row);
+				resolve();
+			}catch(err){
+				winston.error(`Error querying database with request "${req}" and params "${params.join(', ')}".`);
+				reject(err);
+			}
+		});
+	}	
+
 	this.deleteRequest = (req, params) => {
 		return new Promise((resolve, reject) => {
 			try{

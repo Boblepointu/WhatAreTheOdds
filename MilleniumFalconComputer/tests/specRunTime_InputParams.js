@@ -17,7 +17,43 @@ describe("Pulling parameters.", function() {
 	});
 });
 
-describe("Verifying back-api.js parameters.", function() {
+describe("Verifying config/env parameters.", function() {
+	
+	it("contains a valid path 'MFalconConfigPath' value", function() {
+		expect(Params.MFalconConfigPath).toEqual(jasmine.any(String));
+		expect(IsValidPath(Params.MFalconConfigPath)).toBe(true);
+	});
+
+	it("contains a valid path 'BufferDbPath' value", function() {
+		expect(Params.BufferDbPath).toEqual(jasmine.any(String));
+		expect(IsValidPath(Params.BufferDbPath)).toBe(true);
+	});
+
+	it("contains a valid path 'UniverseWorkDbPath' value", function() {
+		expect(Params.UniverseWorkDbPath).toEqual(jasmine.any(String));
+		expect(IsValidPath(Params.UniverseWorkDbPath)).toBe(true);
+	});
+
+	it("contains a valid (0 || 1) integer 'DryRun' value", function() {
+		expect(Params.DryRun).toEqual(jasmine.any(Number));
+		expect(Params.DryRun == 0 || Params.DryRun == 1).toBe(true);
+	});
+
+	it("contains a valid (1 || 2 || 3 || 4 || 5) integer 'LogLevel' value", function() {
+		expect(Params.LogLevel).toEqual(jasmine.any(Number));
+		expect(Params.LogLevel > 0 && Params.LogLevel <= 5).toBe(true);
+	});
+
+	it("contains a valid (>0) integer 'HardTimeoutSec' value", function() {
+		expect(Params.HardTimeoutSec).toEqual(jasmine.any(Number));
+		expect(Params.HardTimeoutSec > 0).toBe(true);
+	});
+
+	it("contains a valid (>0 && <HardTimeoutSec) integer 'SoftTimeoutSec' value", function() {
+		expect(Params.SoftTimeoutSec).toEqual(jasmine.any(Number));
+		expect(Params.SoftTimeoutSec > 0 && Params.SoftTimeoutSec < Params.HardTimeoutSec).toBe(true);
+	});
+
 	it("contains a valid (>0 && <65535) integer 'Port' value", function() {
 		expect(Params.Port).toEqual(jasmine.any(Number));
 		expect(Params.Port > 0 && Params.Port <= 65535).toBe(true);
@@ -33,11 +69,6 @@ describe("Verifying back-api.js parameters.", function() {
 		expect(Params.AllowAllAccessControlOrigins == 0 || Params.AllowAllAccessControlOrigins == 1).toBe(true);
 	});
 
-	it("contains a valid (0 || 1) integer 'DryRun' value", function() {
-		expect(Params.DryRun).toEqual(jasmine.any(Number));
-		expect(Params.DryRun == 0 || Params.DryRun == 1).toBe(true);
-	});	
-
 	it("contains a valid (>0) integer 'MaxSentRouteToClient' value", function() {
 		expect(Params.MaxSentRouteToClient).toEqual(jasmine.any(Number));
 		expect(Params.MaxSentRouteToClient > 0).toBe(true);
@@ -46,31 +77,7 @@ describe("Verifying back-api.js parameters.", function() {
 	it("contains a valid (>0) integer 'MaxPrecalculatedRoutes' value", function() {
 		expect(Params.MaxPrecalculatedRoutes).toEqual(jasmine.any(Number));
 		expect(Params.MaxPrecalculatedRoutes > 0).toBe(true);
-	});	
-});
-
-describe("Verifying back-client-worker.js parameters.", function() {
-	it("contains a valid (>0) integer 'HardTimeoutSec' value", function() {
-		expect(Params.HardTimeoutSec).toEqual(jasmine.any(Number));
-		expect(Params.HardTimeoutSec > 0).toBe(true);
 	});
-
-	it("contains a valid (>0 && <HardTimeoutSec) integer 'SoftTimeoutSec' value", function() {
-		expect(Params.SoftTimeoutSec).toEqual(jasmine.any(Number));
-		expect(Params.SoftTimeoutSec > 0 && Params.SoftTimeoutSec < Params.HardTimeoutSec).toBe(true);
-	});
-
-	it("contains a valid (0 || 1) integer 'AllowAllAccessControlOrigins' value", function() {
-		expect(Params.AllowAllAccessControlOrigins).toEqual(jasmine.any(Number));
-		expect(Params.AllowAllAccessControlOrigins == 0 || Params.AllowAllAccessControlOrigins == 1).toBe(true);
-	});
-
-	it("contains a valid path 'MFalconConfigPath' value", function() {
-		expect(Params.MFalconConfigPath).toEqual(jasmine.any(String));
-		expect(IsValidPath(Params.MFalconConfigPath)).toBe(true);
-	});
-
-
 });
 
 describe("Verifying Millenium Falcon config file.", function() {
@@ -247,17 +254,15 @@ describe("Verifying universe database content.", function() {
 		try{
 			var mFalcon = JSON.parse(Fs.readFileSync(Params.MFalconConfigPath));
 			var UniverseDb = new Db();
-			await UniverseDb.openDb(mFalcon.routes_db);		
-			var routes = await UniverseDb.selectRequest(`SELECT * FROM routes`, []);
-
-			for(let i = 0; i < routes.length; i++){
-				expect(Validator.isAlphanumeric(routes[i].origin)).toBe(true);
-				expect(Validator.isAlphanumeric(routes[i].destination)).toBe(true);
-				expect(routes[i].origin.length < 1000).toBe(true);
-				expect(routes[i].destination.length < 1000).toBe(true);
-				expect(routes[i].travel_time).toEqual(jasmine.any(Number));
-				expect(routes[i].travel_time >= 0).toBe(true);
-			}
+			await UniverseDb.openDb(mFalcon.routes_db);
+			var routes = await UniverseDb.selectIteratorRequest(`SELECT * FROM routes`, [], row => {
+				expect(Validator.isAlphanumeric(row.origin)).toBe(true);
+				expect(Validator.isAlphanumeric(row.destination)).toBe(true);
+				expect(row.origin.length < 1000).toBe(true);
+				expect(row.destination.length < 1000).toBe(true);
+				expect(row.travel_time).toEqual(jasmine.any(Number));
+				expect(row.travel_time >= 0).toBe(true);
+			});
 			await UniverseDb.closeDb();
 		}catch(err){ expect(false).toBe(true); }
 	});
