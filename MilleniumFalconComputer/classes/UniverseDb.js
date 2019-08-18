@@ -48,8 +48,8 @@ module.exports = function(DbPath){
 				WHERE (destination=? OR origin=?) AND travel_time<=?`, [planet, planet, maxTravelTime]));
 	}	
 
-	this.getRoutesCount = async () => {
-		winston.log(`Querying route count.`);
+	this.getLinksCount = async () => {
+		winston.log(`Querying links count.`);
 		return (await db.selectRequest(`SELECT count(*) as cnt FROM routes`))[0].cnt;
 	}	
 

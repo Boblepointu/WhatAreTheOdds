@@ -21,7 +21,7 @@ The app should be platform independent. Currently it has been tested on :
 - `Linux debian 4.9.0-9-amd64 #1 SMP Debian 4.9.168-1+deb9u2 (2019-05-13) x86_64 GNU/Linux`
 	- With `Yarn v1.12.3` and `Node v10.15.3`
 - `Windows 10 Entreprise LTSC - build 1809 - version 17763.503`
-	- With `Yarn v1.12.3`, `Node v12.4.0` and `git bash` for console (should work with cygwin & co)
+	- With `Yarn v1.12.3`, `Node v12.4.0` and `MSYS` for console port (should work with CygWin)
 
   
 ## Production dependencies
@@ -66,14 +66,10 @@ The app is composed of two blocks :
 
 ## Raw usage examples
 
-### Pass a custom `millenium-falcon.json` file
-
 ```bash
 # Build the app
 bash build.sh
-# Cleanup placeholder data
-rm -rf ./MilleniumFalconComputer/dataset/millenium-falcon.json
-cp /home/millenium-falcon.json ./MilleniumFalconComputer/dataset/millenium-falcon.json
+# Add / Replace / Change dataset data in ./MilleniumFalconComputer/dataset/
 # Launch the app
 cd MilleniumFalconComputer && yarn run start
 # Launch browser on 'http://127.0.0.1:3000'

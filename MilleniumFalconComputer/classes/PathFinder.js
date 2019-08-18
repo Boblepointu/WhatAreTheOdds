@@ -9,7 +9,7 @@ module.exports = function(){
 		var winston = Logger('PathFinder->precomputeUniverse', 2);
 		try{
 			// Finding out how much entries we got in the provided database.
-			var totalEntries = await UniverseWorkDb.getRoutesCount();
+			var totalEntries = await UniverseWorkDb.getLinksCount();
 			winston.log(`There is ${totalEntries} links to discover in db.`);
 
 			winston.log(`Pulling db slice by slice starting by our destination planet (${MFalcon.arrival}).`);
@@ -18,6 +18,8 @@ module.exports = function(){
 			var hopCount = 1;
 			// Total number of link pulled.
 			var totalLinksPulled = 0;
+			// Total number of link qualifyed.
+			var totalLinksQualifyed = 0;
 			// Number of time we cross MFalcon.arrival during the loop process
 			var directRoutesCount = 0;
 			// If we cross MFalcon.arrival during the process, this switch is turned to true.
@@ -36,9 +38,11 @@ module.exports = function(){
 				await UniverseWorkDb.markPulledFromIds(links.map(link => link.id));
 				// Discarding links with a travel time greater than MFalcon.autonomy
 				links = links.filter(link => link.travel_time <= MFalcon.autonomy);
+				// Incrementing totalLinksQualifyed
+				totalLinksQualifyed += links.length;				
 				// If links array is non empty, log status
 				if(links.length)
-					winston.log(`${((totalLinksPulled*100)/totalEntries).toFixed(2)}% => slice #${hopCount} Pulled ${totalLinksPulled} links from db, ${links.length} links qualify to this slice, given Millenium Falcon autonomy of ${MFalcon.autonomy} days.`);
+					winston.log(`${((totalLinksQualifyed*100)/totalEntries).toFixed(2)}% => slice #${hopCount} Pulled ${totalLinksPulled} links from db, ${links.length} links qualify to this slice, given Millenium Falcon autonomy of ${MFalcon.autonomy} days.`);
 				// Extracting planets names from links
 				let planets = links.map(link => link.origin).concat(links.map(link => link.destination));
 				// Defining which planet we need to pull for next loop
@@ -82,7 +86,7 @@ module.exports = function(){
 					if(route[i+1])
 						travelTime += Math.min(...(await UniverseWorkDb.getTravelTimes(route[i], route[i+1])));
 
-				travelTime = travelTime + Math.floor(travelTime / MFalcon.autonomy);
+				travelTime = travelTime + Math.floor(travelTime / MFalcon.autonomy) - 1;
 				return travelTime;
 			}
 			// Getting back the route queue size from buffer database
@@ -111,7 +115,7 @@ module.exports = function(){
 						// Break the explore loop. We finished search here.
 						break;
 					}					
-					// Retrieve 100 best routes
+					// Retrieve Params.ExploreBatchSize / 100 best routes
 					routesBuffer = await BufferDb.pullRoutesFromQueue(pullSize);
 				}else if(!routesBuffer.length) routesBuffer = await BufferDb.pullRoutesFromQueue(pullSize);
 				// If we got no route, the search is finished. Breaking the loop.
@@ -184,7 +188,7 @@ module.exports = function(){
 					if(route[i+1])
 						timeToDestination += Math.max(...(await UniverseWorkDb.getTravelTimes(route[i], route[i+1])));
 
-				timeToDestination = timeToDestination + Math.floor(timeToDestination/MFalcon.autonomy);
+				timeToDestination = timeToDestination;// + Math.floor(timeToDestination / MFalcon.autonomy) - 1;
 				return timeToDestination;
 			}
 
