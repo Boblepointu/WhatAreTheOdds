@@ -115,7 +115,7 @@ module.exports = function(){
 						// Break the explore loop. We finished search here.
 						break;
 					}					
-					// Retrieve Params.ExploreBatchSize / 100 best routes
+					// Retrieve (Params.ExploreBatchSize / 100) best routes
 					routesBuffer = await BufferDb.pullRoutesFromQueue(pullSize);
 				}else if(!routesBuffer.length) routesBuffer = await BufferDb.pullRoutesFromQueue(pullSize);
 				// If we got no route, the search is finished. Breaking the loop.
@@ -267,7 +267,7 @@ module.exports = function(){
 				let nextPlanetDistances = await UniverseWorkDb.getTravelTimes(node[1], nextPlanet);
 
 				for(var i = 0; i < nextPlanetDistances.length; i++){
-					// If we havn't got needed fuel to go to next planet; add a refuel node to neighbors only if last neighbors isn't a refuel.
+					// If we havn't got needed fuel to go to next planet; add a refuel node to neighbors only if last neighbor isn't a refuel.
 					if(node[5] < nextPlanetDistances[i] && node[0] != 1){
 						let refuelNode = [1, node[1], 1, node[3]+1, getHitCount(node[1], node[3]+1, node[3]+1)+node[4], MFalcon.autonomy, node[6]+1, await getHeuristicRisk(node[1], node[3]+1), node];
 						neighbors.push(refuelNode);
