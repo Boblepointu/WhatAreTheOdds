@@ -196,5 +196,7 @@ You can also hard set these variables into [./MilleniumFalconComputer/config.jso
 
 - --> Insider note : When and if you listen to a random a\*\*hole who bullshit about me because he "checked" if I can count by head the change of a shop transaction; If i can stand for me in a supermarket for a piece of cheese; If I can repair a dishwasher because "I'm a computer guy" (ie: WHEN I DON'T CARE, I DON'T DO, SIMPLE HEURISTICS[bet you don't even know the word]); Look about this first. If you can understand what it is, and understand the workload and study (surprise; bet you can't, and it isn't even close to 'rocket science') needed to resolve it, you can judge. If not; go to hell. We don't live on the same planet guys; you have no right (and if you think you have, you're a dumba\*\*) qualifying my mental/social/whatever abilities ! You speak religion, I speak realities. You got my a\*\* playing dumb this time; next time I'll own you.
 
-- --> Insider note 2 : Whatever the outcome, thank's to [Dataiku](https://www.dataiku.com/), [Arnaud Pichery](https://www.linkedin.com/in/apichery/), and [Maïté Le Goadec](https://www.linkedin.com/in/ma%C3%AFt%C3%A9-le-goadec/) for the full professional qualifications test and the respectful interactions. Means a lot to me.
+## Credits
+
+Whatever the outcome, thank's to [Dataiku](https://www.dataiku.com/), [Arnaud Pichery](https://www.linkedin.com/in/apichery/), and [Maïté Le Goadec](https://www.linkedin.com/in/ma%C3%AFt%C3%A9-le-goadec/) for the full professional qualifications test and the respectful interactions. Means a lot to me.
 
