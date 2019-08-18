@@ -110,7 +110,7 @@ module.exports = function(){
 					if(routesFound >= Params.MaxPrecalculatedRoutes){
 						// Log it
 						winston.log(`Found ${routesFound} routes, hitted max precalculated route limit. Cleaning up routes queue and stopping here exploration.`);
-						// Empty buffer database queue
+						// Empty buffer database queue for this workset
 						await BufferDb.cleanupQueue();
 						// Break the explore loop. We finished search here.
 						break;
@@ -126,7 +126,7 @@ module.exports = function(){
 				let links = await UniverseWorkDb.getLinksWithPlanet(currRoute[currRoute.length-1], MFalcon.autonomy);
 				// Extracting all planet names from these links
 				let planets = links.map(link => link.origin).concat(links.map(link => link.destination));
-				// Filtering these planet name, excluding them if they are already in the route pulled before
+				// Filtering these planet name, excluding them if they are already in the current route
 				let neighbors = planets.filter(planet => currRoute.indexOf(planet) == -1);
 				// For each neighbor
 				for(let i = 0; i < neighbors.length; i++){
@@ -235,7 +235,6 @@ module.exports = function(){
 			while(heap.length){
 				// Get the first node in the heap.
 				let node = heap.shift();
-
 				// If we got a full path; end here.
 				if(node[1] == MFalcon.arrival){
 					// Reconstructing our path from last found node.
