@@ -102,6 +102,7 @@ module.exports = function(){
 		params.AllowAllAccessControlOrigins = (parseInt(process.env.ALLOW_ALL_ACCESS_CONTROL_ORIGIN, 10) || process.env.ALLOW_ALL_ACCESS_CONTROL_ORIGIN) || Config.AllowAllAccessControlOrigins || 0;
 		params.MaxSentRouteToClient = (parseInt(process.env.MAX_SENT_ROUTE_TO_CLIENT, 10) || process.env.MAX_SENT_ROUTE_TO_CLIENT) || Config.MaxSentRouteToClient || 10;
 		params.MaxPrecalculatedRoutes = (parseInt(process.env.MAX_PRECALCULATED_ROUTES, 10) || process.env.MAX_PRECALCULATED_ROUTES) || Config.MaxPrecalculatedRoutes || 10;
+		params.ExploreBatchSize = (parseInt(process.env.EXPLORE_BATCH_SIZE, 10) || process.env.EXPLORE_BATCH_SIZE) || Config.ExploreBatchSize || 100;
 		params.HardTimeoutSec = (parseInt(process.env.HARD_TIMEOUT_SEC, 10) || process.env.HARD_TIMEOUT_SEC) || Config.HardTimeoutSec || 60;
 		params.SoftTimeoutSec = (parseInt(process.env.SOFT_TIMEOUT_SEC, 10) || process.env.SOFT_TIMEOUT_SEC) || Config.SoftTimeoutSec || 30;
 		params.MFalconConfigPath = process.env.MFALCON_CONFIG_PATH || Config.MFalconConfigPath || './dataset/millenium-falcon.json';

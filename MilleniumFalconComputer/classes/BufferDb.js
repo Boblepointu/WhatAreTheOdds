@@ -22,6 +22,7 @@ module.exports = function(DbPath){
 					CREATE TABLE IF NOT EXISTS "routes" (
 						"id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
 						"route_slug"	TEXT NOT NULL,
+						"minimum_travel_time"	INTEGER NOT NULL,
 						"workset_hash_id"	INTEGER NOT NULL,
 						FOREIGN KEY("workset_hash_id") REFERENCES "workset_hashs"("id") ON DELETE CASCADE
 					);
@@ -85,24 +86,23 @@ module.exports = function(DbPath){
 			await db.insertRequest(`INSERT INTO routes_queues (route_slug, route_hop_count, last_planet_id, workset_hash_id) VALUES ${routesValues.join(',')}`);
 	}
 
-	this.pullRouteFromQueue = async () => {
-		winston.log(`Getting back best (closest to destination) route from queue.`);
+	this.pullRoutesFromQueue = async numRoute => {
+		winston.log(`Getting back bests (closest to destination) ${numRoute} routes from queue.`);
 		
-		var route = (await db.selectRequest(`
+		var routes = await db.selectRequest(`
 			SELECT rq.id as id, rq.route_slug as route_slug, ph.hops_to_destination as hops_to_destination
 				FROM routes_queues rq
 				INNER JOIN planets_hops ph
 					ON ph.id = rq.last_planet_id
 				WHERE rq.workset_hash_id=?
 				ORDER BY ph.hops_to_destination, rq.route_hop_count ASC
-				LIMIT 0,1`, [worksetHashId]))[0];
+				LIMIT 0,${numRoute}`, [worksetHashId]);
 
-		if(!route) return false;
+		if(!routes.length) return [];
 
-		await db.deleteRequest(`DELETE FROM routes_queues WHERE id=? AND workset_hash_id=?`,[route.id, worksetHashId]);
-		route.route = route.route_slug.split('->');
-		delete route.route_slug;
-		return route;
+		await db.deleteRequest(`DELETE FROM routes_queues WHERE id IN (${routes.map(row => row.id).join(',')}) AND workset_hash_id=?`,[worksetHashId]);
+		routes = routes.map(row => row.route_slug.split('->'));
+		return routes;
 	}
 
 	this.cleanupQueue = async () => {
@@ -121,9 +121,9 @@ module.exports = function(DbPath){
 		return (await db.selectRequest(`SELECT count(*) as cnt FROM routes_queues WHERE workset_hash_id=?`, [worksetHashId]))[0].cnt;
 	}
 
-	this.getRoutes = async () => {
+	this.getRoutes = async maximumTravelTime => {
 		winston.log(`Getting back all precalculed routes.`);
-		return await db.selectRequest(`SELECT * FROM routes WHERE workset_hash_id=?`, [worksetHashId]);
+		return await db.selectRequest(`SELECT * FROM routes WHERE minimum_travel_time<=? AND workset_hash_id=?`, [maximumTravelTime, worksetHashId]);
 	}
 
 	this.getRouteCount = async () => {
@@ -140,18 +140,12 @@ module.exports = function(DbPath){
 			`INSERT INTO planets_hops(planet, hops_to_destination, workset_hash_id) VALUES ${toInsert}`, []);
 	}
 
-	this.insertRoute = async route => {
+	this.insertRoute = async (route, minimumTravelTime) => {
+		if(await this.isRouteAlreadyInDb(route)) return;
 		var routeSlug = route.join('->');
-		winston.log(`Verifying route does'nt already exist.`);
-		var cnt = (await db.selectRequest(
-					`SELECT count(*) as cnt FROM routes WHERE route_slug=? AND workset_hash_id=?`, [routeSlug, worksetHashId]))[0].cnt;
-		if(cnt){
-			console.log(`Route ${routeSlug} already exist in database for this workset. Do nothing.`);
-			return;
-		}
 		winston.log(`Inserting new route ${routeSlug}.`);
 		await db.insertRequest(
-			`INSERT INTO routes(route_slug, workset_hash_id) VALUES (?, ?)`, [routeSlug, worksetHashId]);
+			`INSERT INTO routes(route_slug, minimum_travel_time, workset_hash_id) VALUES (?, ?, ?)`, [routeSlug, minimumTravelTime, worksetHashId]);
 	}
 
 	this.getWorkSetStatus = async () => {

@@ -83,10 +83,10 @@ var CliCall = async (dataSet, bufferDb) => {
 		winston.log(`Intialising PathFinder from ${dataSet.MFalcon.departure} to ${dataSet.MFalcon.arrival} with an autonomy of ${dataSet.MFalcon.autonomy}`);
 		var pathFinder = new PathFinder();
 
-		winston.log(`Pulling available routes from buffer db.`);
-		var routes = await bufferDb.getRoutes();
+		winston.log(`Pulling routes qualifying for a countdown of ${dataSet.Empire.countdown} from buffer db.`);
+		var routes = await bufferDb.getRoutes(dataSet.Empire.countdown);
 
-		winston.log('List of available routes : ');
+		winston.log('List of qualifyed routes : ');
 		for(let i = 0; i < routes.length; i++)
 			winston.log(routes[i].route_slug);
 
@@ -161,10 +161,10 @@ var ApiCall = async (dataSet, bufferDb) => {
 		winston.log(`Intialising PathFinder from ${dataSet.MFalcon.departure} to ${dataSet.MFalcon.arrival} with an autonomy of ${dataSet.MFalcon.autonomy}`);
 		var pathFinder = new PathFinder();
 
-		winston.log(`Pulling available routes from buffer db.`);
-		var routes = await bufferDb.getRoutes();
+		winston.log(`Pulling routes qualifying for a countdown of ${dataSet.Empire.countdown} from buffer db.`);
+		var routes = await bufferDb.getRoutes(dataSet.Empire.countdown);
 
-		winston.log('List of available routes : ');
+		winston.log('List of qualifyed routes : ');
 		for(let i = 0; i < routes.length; i++)
 			winston.log(routes[i].route_slug);
 

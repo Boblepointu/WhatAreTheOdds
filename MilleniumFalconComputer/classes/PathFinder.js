@@ -43,7 +43,7 @@ module.exports = function(){
 				let planets = links.map(link => link.origin).concat(links.map(link => link.destination));
 				// Defining which planet we need to pull for next loop
 				let nextPlanetsToPollHashMap = {};
-				planets.forEach(async planet => {
+				planets.forEach(planet => {
 					// If planet is equal to MFalcon.departure and we havn't already registered this planet this loop, increment directRoutesCount
 					if(planet == MFalcon.departure && !planetsToPollHashMap[planet]) directRoutesCount++;
 					// If we havn't already registered this planet for next loop, do it
@@ -75,6 +75,16 @@ module.exports = function(){
 	this.explore = async (UniverseWorkDb, BufferDb, MFalcon) => {
 		var winston = new Logger(`PathFinder->explore`, 2);
 		try{
+			// Defining a func to find the minimum travel time of route
+			var getMinimumTravelTime = async route => {
+				var travelTime = 0;
+				for(let i = 0; i < route.length; i++)
+					if(route[i+1])
+						travelTime += Math.min(...(await UniverseWorkDb.getTravelTimes(route[i], route[i+1])));
+
+				travelTime = travelTime + Math.floor(travelTime / MFalcon.autonomy);
+				return travelTime;
+			}
 			// Getting back the route queue size from buffer database
 			var routeQueueCount = await BufferDb.getRouteQueueCount();
 			// If no routes are already in queue
@@ -83,50 +93,56 @@ module.exports = function(){
 				// Initialising queue by adding a route with one node, MFalcon.departure
 				await BufferDb.addRoutesToQueue([[MFalcon.departure]]);
 			}
-			// Simple adapted Djikstra. Find all routes in graph.
+			let pullSize = Math.ceil(Params.ExploreBatchSize / 100);
+			// Simple adapted batch Djikstra. Find all routes in graph.
+			let routesBuffer = await BufferDb.pullRoutesFromQueue(pullSize);
 			while(true){
-				// Get the best available route in queue (ordered by closest to destination then smaller hops from departure)
-				let currRoute = await BufferDb.pullRouteFromQueue();
+				if(routesBuffer.length > Params.ExploreBatchSize){
+					// Add all new routes to queue in buffer database
+					await BufferDb.addRoutesToQueue(routesBuffer);
+					// Getting back route count in buffer database
+					let routesFound = await BufferDb.getRouteCount();
+					// If route count is >= of MaxPrecalculatedRoutes
+					if(routesFound >= Params.MaxPrecalculatedRoutes){
+						// Log it
+						winston.log(`Found ${routesFound} routes, hitted max precalculated route limit. Cleaning up routes queue and stopping here exploration.`);
+						// Empty buffer database queue
+						await BufferDb.cleanupQueue();
+						// Break the explore loop. We finished search here.
+						break;
+					}					
+					// Retrieve 100 best routes
+					routesBuffer = await BufferDb.pullRoutesFromQueue(pullSize);
+				}else if(!routesBuffer.length) routesBuffer = await BufferDb.pullRoutesFromQueue(pullSize);
 				// If we got no route, the search is finished. Breaking the loop.
-				if(!currRoute) break;
+				if(!routesBuffer.length) break;
+				// Get the next available routes in buffer (ordered by closest to destination then smaller hops from departure)
+				let currRoute = routesBuffer.shift();
 				// Getting back links associated with last planet in route
-				let links = await UniverseWorkDb.getLinksWithPlanet(currRoute.route[currRoute.route.length-1], MFalcon.autonomy);
+				let links = await UniverseWorkDb.getLinksWithPlanet(currRoute[currRoute.length-1], MFalcon.autonomy);
 				// Extracting all planet names from these links
 				let planets = links.map(link => link.origin).concat(links.map(link => link.destination));
 				// Filtering these planet name, excluding them if they are already in the route pulled before
-				let neighbors = planets.filter(planet => currRoute.route.indexOf(planet) == -1);
-				// Initialising new route array
-				let newRoutes = [];
+				let neighbors = planets.filter(planet => currRoute.indexOf(planet) == -1);
 				// For each neighbor
 				for(let i = 0; i < neighbors.length; i++){
 					let currNeighbor = neighbors[i];
 					// Duplicate our route
-					let newRoute = currRoute.route.slice(0);
+					let newRoute = currRoute.slice(0);
 					// Add current neighbor to it
 					newRoute.push(currNeighbor);
 					// If current neighbor is equal to MFalcon.arrival and route is not already saved in database
 					if(currNeighbor == MFalcon.arrival && !(await BufferDb.isRouteAlreadyInDb(newRoute))){
+						// Get minimum travel time
+						let minimumTravelTime = await getMinimumTravelTime(newRoute);
 						// Then we got a new route ! Log it
-						winston.log(`${newRoute.length - 1} hops : ${newRoute.join('->')}.`);
+						winston.log(`${newRoute.length - 1} hops, ${minimumTravelTime} days: ${newRoute.join('->')}.`);
 						// Insert route to buffer database
-						await BufferDb.insertRoute(newRoute);
+						await BufferDb.insertRoute(newRoute, minimumTravelTime);
 					}
 					// Else, save this route for queue
-					else newRoutes.push(newRoute);
+					else routesBuffer.push(newRoute);
 				}
-				// Add all new routes to queue in buffer database
-				await BufferDb.addRoutesToQueue(newRoutes);
-				// Getting back route count in buffer database
-				let routesFound = await BufferDb.getRouteCount();
-				// If route count is >= of MaxPrecalculatedRoutes
-				if(routesFound >= Params.MaxPrecalculatedRoutes){
-					// Log it
-					winston.log(`Found ${routesFound} routes, hitted max precalculated route limit. Cleaning up routes queue and stopping here exploration.`);
-					// Empty buffer database queue
-					await BufferDb.cleanupQueue();
-					// Break the explore loop. We finished search here.
-					break;
-				}		
 			}
 
 			winston.log(`${await BufferDb.getRouteCount()} routes found !`);
@@ -168,7 +184,7 @@ module.exports = function(){
 					if(route[i+1])
 						timeToDestination += Math.max(...(await UniverseWorkDb.getTravelTimes(route[i], route[i+1])));
 
-				timeToDestination = timeToDestination; //+ Math.round(timeToDestination/MFalcon.autonomy);
+				timeToDestination = timeToDestination + Math.floor(timeToDestination/MFalcon.autonomy);
 				return timeToDestination;
 			}
 

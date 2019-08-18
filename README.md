@@ -161,6 +161,13 @@ You can also hard set these variables into [./MilleniumFalconComputer/config.jso
   - Example value : 3000
   - Description : Will stop exploring universe when this many routes will be found. We don't want buffer database to grow uncontrolled.
 
+#### ExploreBatchSize
+  - Config file entry : "ExploreBatchSize"
+  - Environment variable : EXPLORE_BATCH_SIZE
+  - Example value : 10000
+  - Minimum value : 100
+  - Description : Size of batch for each step in explore. The memory consumed by the explore step is tied to it. The exploration speed and buffer database size too. Warning : don't change it for a given workset through multiple launch without resetting buffer database. It can shift the search domain 'cursor', and you'll end up with only very long routes in the live buffer. A value < 100 is suboptimal, hence it is rejected by runtime tests.
+
 #### BufferDbPath
   - Config file entry : "BufferDbPath"
   - Environment variable : BUFFER_DB_PATH

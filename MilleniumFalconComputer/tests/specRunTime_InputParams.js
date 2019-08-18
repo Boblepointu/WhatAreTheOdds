@@ -74,9 +74,9 @@ describe("Verifying config/env parameters.", function() {
 		expect(Params.MaxSentRouteToClient > 0).toBe(true);
 	});
 
-	it("contains a valid (>0) integer 'MaxPrecalculatedRoutes' value", function() {
-		expect(Params.MaxPrecalculatedRoutes).toEqual(jasmine.any(Number));
-		expect(Params.MaxPrecalculatedRoutes > 0).toBe(true);
+	it("contains a valid (>100) integer 'ExploreBatchSize' value", function() {
+		expect(Params.ExploreBatchSize).toEqual(jasmine.any(Number));
+		expect(Params.ExploreBatchSize >= 100).toBe(true);
 	});
 });
 
