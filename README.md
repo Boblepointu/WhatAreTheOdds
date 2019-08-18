@@ -184,7 +184,7 @@ You can also hard set these variables into [./MilleniumFalconComputer/config.jso
   - Config file entry : "LogLevel"
   - Environment variable : LOG_LEVEL
   - Example value : 4
-  - Description : Given the nature of the app, loglevels must be managed to prevent output cluttering. Each level added will activate one 'functional' deeper. LogLevel 4 is advised for small production server; LogLevel 3 for high usage production server; LogLevel 5 output way too much data, to use only for debug.
+  - Description : Given the nature of the app, loglevels must be managed to prevent output cluttering. Each level added will activate one 'functional' deeper. LogLevel 3 is advised for small production server; LogLevel 2 for high usage production server; LogLevel 4-5 output way too much data, to use only for debug.
 
 ## Notes
 
