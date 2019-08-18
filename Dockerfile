@@ -13,6 +13,9 @@ WORKDIR /app
 # Build the app
 RUN bash build.sh
 
+# Remove C3PO build files
+RUN rm -rf C3PO
+
 WORKDIR /app/MilleniumFalconComputer/
 
 # Execute tests
