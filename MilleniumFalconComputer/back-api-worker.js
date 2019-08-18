@@ -31,7 +31,6 @@ if(Cluster.isMaster){
 	const BodyParser = require('body-parser');
 	const ClientWorker = require('./classes/ClientWorker.js');
 	const Validator = new (require('./classes/Validator.js'))();
-	const JasmineRuntime = require('./classes/JasmineRuntime.js');
 
 	const winston = new Logger('BackApiSlaveNode');
 
@@ -53,8 +52,7 @@ if(Cluster.isMaster){
 
 	var getSpawnedChildsCount = () => {
 		return new Promise((resolve, reject) => {
-			var eventReceiver = spawnedChildsCount => resolve(spawnedChildsCount);
-			process.once("message", eventReceiver);
+			process.once("message", resolve);
 			process.send("getStatus");
 		});
 	};

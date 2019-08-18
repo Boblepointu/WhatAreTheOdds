@@ -28,15 +28,12 @@ var main = async () => {
 			process.exit();
 		}
 
+		winston.log(`Loading Millenium Falcon configuration file at ${Params.MFalconConfigPath}.`);
 		var MFalcon = require(Params.MFalconConfigPath);
 
-		// We launch the DB worker and wait for a minimum of one route
-		winston.log(`Initialising buffer database from ${Params.BufferDbPath}.`);
-
-		// Generating hashes
-		winston.log(`Generating universe db and Millenium Falcon hash.`);
+		winston.log(`Generating workset hash.`);
 		var WorkSetHash = await Toolbox.getWorkSetHash(MFalcon);
-		winston.log(`Db and Millenium Falcon hash is ${WorkSetHash}.`);
+		winston.log(`Universe db and Millenium Falcon config file workset hash is ${WorkSetHash}.`);
 
 		if(Params.DryRun){
 			winston.log(`Dry run asked. Deleting buffer database.`);
@@ -44,7 +41,7 @@ var main = async () => {
 			catch(err){}			
 		}
 
-		// Creating, opening, populating BufferDb if not existing
+		winston.log(`Loading, creating, initialising as needed buffer database from ${Params.BufferDbPath}.`);
 		var bufferDb = new BufferDb(Params.BufferDbPath);
 		await bufferDb.open();
 		await bufferDb.setWorkSetHash(WorkSetHash);
@@ -56,7 +53,7 @@ var main = async () => {
 		winston.log(`Waiting for end of precomputation.`);
 		var workSetStatus = await bufferDb.getWorkSetStatus();
 		while(!workSetStatus.precomputed){
-			workSetStatus = await bufferDb.getWorkSetStatus()
+			workSetStatus = await bufferDb.getWorkSetStatus();
 			await Toolbox.sleep(1000);
 		}
 
@@ -71,7 +68,7 @@ var main = async () => {
 			routeCount = await bufferDb.getRouteCount();
 			await Toolbox.sleep(1000);
 		}
-		winston.log(`BufferDb has got ${routeCount} available routes for processing. Continuing.`);
+		winston.log(`BufferDb has got ${routeCount} precomputed routes for processing. Continuing.`);
 
 		winston.log(`Closing BufferDb.`);
 		await bufferDb.close();
