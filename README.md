@@ -188,7 +188,7 @@ You can also hard set these variables into [./MilleniumFalconComputer/config.jso
 
 ## Todo
 
-- Find aproximation method giving a result without relying only on a Dijkstra at explore step. Candidates to testing would be : [simulated annealing](https://en.wikipedia.org/wiki/Simulated_annealing), [linear programming](https://en.wikipedia.org/wiki/Linear_programming) and [local search](https://en.wikipedia.org/wiki/Local_search_(optimization). Some mix of these three could give a good result even on the longests paths.
+- Find aproximation method giving a result without relying only on a Dijkstra at explore step. Candidates to testing would be : [simulated annealing](https://en.wikipedia.org/wiki/Simulated_annealing), [linear programming](https://en.wikipedia.org/wiki/Linear_programming) and [local search](https://en.wikipedia.org/wiki/Local_search_(optimization)). Some mix of these three could give a good result even on the longests paths.
 - Add unit testing ?
 - Add end to end testing ? Selenium recipes ?
 - Build a good graph generator; not the crappy one used to generate alternatives universe.db in dataset folder. A new project on itself.
