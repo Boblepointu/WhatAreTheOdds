@@ -23,7 +23,10 @@ The app should be platform independent. Currently it has been tested on :
 - `Windows 10 Entreprise LTSC - build 1809 - version 17763.503`
 	- With `Yarn v1.12.3`, `Node v12.4.0` and `MSYS` for console port (should work with `CygWin`)
 
-  
+## Prebuilt docker images
+
+[You can find them over there, on docker hub.](https://cloud.docker.com/repository/docker/boblepointu/whataretheodds/)
+
 ## Production dependencies
 
 - Install docker to your system.
