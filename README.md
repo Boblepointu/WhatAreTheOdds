@@ -25,7 +25,7 @@ The app should be platform independent. Currently it has been tested on :
 
 ## Prebuilt docker images
 
-[You can find them over there, on docker hub.](https://cloud.docker.com/repository/docker/boblepointu/whataretheodds/)
+[You can find them over there, on docker hub.](https://hub.docker.com/r/boblepointu/whataretheodds)
 
 ## Production dependencies
 
