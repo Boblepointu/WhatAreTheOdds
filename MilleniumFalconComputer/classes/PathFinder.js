@@ -171,6 +171,20 @@ module.exports = function(){
 				bountyHunters[tempBh[i].planet].push(tempBh[i].day);
 			}
 
+			// Mapping each planet in route to its next options
+			var nextPlanetMap = {};
+			for(let i = 0; i < route.length; i++)
+				nextPlanetMap[route[i]] = await UniverseWorkDb.getNextLinks(route, route[i]);
+			// Finding time to destination for each position
+			var timeToDestinationMap = {};
+			for(let i = 0; i < route.length; i++){
+				timeToDestinationMap[route[i]] = 0;
+				for(let j = i; j < route.length; j++){
+					if(route[j+1])
+						timeToDestinationMap[route[i]] += Math.max(...(await UniverseWorkDb.getTravelTimes(route[j], route[j+1])));
+				}
+			}
+
 			// Function returning how much time we get on a planet at the same time a bounty hunter is on it
 			var getHitCount = (planet, startDay, endDay) => {
 				// If we got no bounty hunter data on this planet; no risk. Return 0.
@@ -181,38 +195,15 @@ module.exports = function(){
 				return increment;
 			}
 
-			var getTimeToDestination = async from => {
-				var startIndex = route.indexOf(from);
-				var timeToDestination = 0;
-				for(let i = startIndex; i < route.length; i++)
-					if(route[i+1])
-						timeToDestination += Math.max(...(await UniverseWorkDb.getTravelTimes(route[i], route[i+1])));
-
-				timeToDestination = timeToDestination;// + Math.floor(timeToDestination / MFalcon.autonomy) - 1;
-				return timeToDestination;
-			}
-
-			var getHeuristicRisk = async (from, travelTimeSoFar) => {
+			var getHeuristicRisk = (from, travelTimeSoFar) => {
 				var risk = 0;
 				var startIndex = route.indexOf(from);
-				var timeToDestination = await getTimeToDestination(from);
+				var timeToDestination = timeToDestinationMap[from];
 				for(let i = startIndex+1; i < route.length; i++)
 					if(route[i] && bountyHunters[route[i]])
 						bountyHunters[route[i]].forEach(bhDay => (bhDay >= travelTimeSoFar && bhDay <= (travelTimeSoFar+timeToDestination)) ? risk++ : 0);
 				return risk;
 			}
-
-			// Simplified A* algorithm. We only look to go forward; so we don't need to store closed nodes.
-			// Only a heap is needed.
-			var heap = [];
-			// For sake of performance, we use array to define our nodes
-			// [ type(0=passingBy,1=refueling,2=waiting), planetName, actionDuration, totalTravelTime, 
-			// totalBhCrossed, remainingFuel, totalStepCount, heuristics, parent ]
-			// Defining our start node.
-			var startNode = [ 0, route[0], 0, 0, getHitCount(route[0], 0, 0), MFalcon.autonomy, 1, false ];
-
-			// Initialise heap with our start node.
-			heap.push(startNode);
 
 			// Function to reconstruct/flatten our linked list.
 			var reconstruct = node => {
@@ -229,7 +220,21 @@ module.exports = function(){
 				}
 				// This is the starting node. No parent; no path. Should not happen (data should be correctly constrained before A* search).
 				else return [ node ]
-			};
+			};			
+
+			// Simplified A* algorithm. We only look to go forward; so we don't need to store closed nodes.
+			// Only a heap is needed.
+			var heap = [];
+			// Complete paths
+			var completePaths = [];
+			// For sake of performance, we use array to define our nodes
+			// [ type(0=passingBy,1=refueling,2=waiting), planetName, actionDuration, totalTravelTime, 
+			// totalBhCrossed, remainingFuel, loopCount, heuristics, parent ]
+			// Defining our start node.
+			var startNode = [ 0, route[0], 0, 0, getHitCount(route[0], 0, 0), MFalcon.autonomy, 1, false ];
+
+			// Initialise heap with our start node.
+			heap.push(startNode);
 
 			// Here we go for the search !
 			while(heap.length){
@@ -251,54 +256,111 @@ module.exports = function(){
 						verboseNode.travelTime = path[i][3];
 						verboseNode.hitCount = path[i][4];
 						verboseNode.remainingFuel = path[i][5];
-						verboseNode.steps = path[i][6];
+						verboseNode.loops = path[i][6];
 						verbosePath.push(verboseNode);
 					}
 					winston.log(`Found a path for route ${route.join('->')} ! Achievable in ${verbosePath[verbosePath.length-1].travelTime} days, with ${verbosePath[verbosePath.length-1].hitCount} bountyhunters crossed.`);
-					return verbosePath;
+					return verbosePath;	
 				}
 
 				// Initialising neighbor list.
 				let neighbors = [];
-				// Identifying next planet in route.
-				let nextPlanet = route[route.indexOf(node[1])+1];
-				// Identifying next planet distance.
-				let nextPlanetDistances = await UniverseWorkDb.getTravelTimes(node[1], nextPlanet);
-
-				for(var i = 0; i < nextPlanetDistances.length; i++){
-					// If we havn't got needed fuel to go to next planet; add a refuel node to neighbors only if last neighbor isn't a refuel.
-					if(node[5] < nextPlanetDistances[i] && node[0] != 1){
-						let refuelNode = [1, node[1], 1, node[3]+1, getHitCount(node[1], node[3]+1, node[3]+1)+node[4], MFalcon.autonomy, node[6]+1, await getHeuristicRisk(node[1], node[3]+1), node];
-						neighbors.push(refuelNode);
-					} 
-					// Add next planet to the neighbors list. In case of multiple links between these planet, add them all
-					if(node[5] >= nextPlanetDistances[i]) {
-						let passingByNode = [0, nextPlanet, nextPlanetDistances[i], node[3]+nextPlanetDistances[i], getHitCount(nextPlanet, node[3]+nextPlanetDistances[i], node[3]+nextPlanetDistances[i])+node[4], node[5]-nextPlanetDistances[i], node[6]+1, await getHeuristicRisk(node[1], node[3]+nextPlanetDistances[i]), node];
-						neighbors.push(passingByNode);
+				let bestHeuristic = Infinity;
+				// Finding out which planet we can go next regarding fuel left
+				let nextLinks = nextPlanetMap[node[1]];
+				for(let i = 0; i < nextLinks.length; i++){
+					let link = nextLinks[i];
+					// Link is travelable given fuel left; add neighbor
+					if(node[5] >= link[1]){
+						neighbors.push([
+							0 // type 0 => passingBy node
+							, link[0] // planet name
+							, link[1] // travel time from last node
+							, node[3]+link[1] // total travel time
+							, getHitCount(link[0], node[3]+link[1], node[3]+link[1])+node[4] // total hit count
+							, node[5]-link[1] // remaining fuel
+							, node[6]+(link[2] ? 1 : 0) // loop count
+							, getHeuristicRisk(link[0], node[3]+link[1]) // heuristic risk
+							, node // current node
+						]);
+						if(node[7] < bestHeuristic) bestHeuristic = node[7];
 					}
 				}
+				
+				// Adding a refuel node only if current node isn't of type wait or refuel
+				if(node[0] != 2 && node[0] != 1){
+					neighbors.push([
+						1 // type 1 => refueling node
+						, node[1] // planet name
+						, 1 // travel time from last node
+						, node[3]+1 // total travel time
+						, getHitCount(node[1], node[3]+1, node[3]+1)+node[4] // total hit count
+						, MFalcon.autonomy // remaining fuel
+						, node[6]// loop count
+						, getHeuristicRisk(node[1], node[3]+1) // heuristic risk
+						, node // current node
+					]);
+					if(node[7] < bestHeuristic) bestHeuristic = node[7];
+				}
 
-				// If last node in the chain isn't of type "wait" and heuristics != 0 for passingBy or refueling
-				if(node[0] != 2 && neighbors[0] && neighbors[0][7] != 0){
+				// Adding wait neighbors only if current node isn't of type wait 
+				// and if heuristics is bad on already calculated neighbors
+				if(node[0] != 2 && bestHeuristic != 0){
 					// Identify best nodes going up in wait times.
 					// Loop through this space.
 					for(let i = 1; i < (Empire.countdown); i++){
 						// Build and add our wait node to the neighbors list.
-						let waitNode = [2, node[1], i, node[3]+i, getHitCount(node[1], node[3], node[3]+i)+node[4], MFalcon.autonomy, node[6]+1, await getHeuristicRisk(node[1], node[3]+i), node];
+						let waitNode = [
+							2 // type 2 => waiting node
+							, node[1] // planet name
+							, i // travel time from last node
+							, node[3]+i // total travel time
+							, getHitCount(node[1], node[3], node[3]+i)+node[4] // total hit count
+							, MFalcon.autonomy // remaining fuel
+							, node[6]// loop count
+							, getHeuristicRisk(node[1], node[3]+i) // heuristic risk
+							, node // current node
+						];
+
 						neighbors.push(waitNode);
 						// If heuristics == 0; we got a clear path to destination. No need to add more nodes.
 						if(waitNode[7] == 0) break;
 					}
 				}
 
+				//console.log(neighbors)
 				for(let i = 0; i < neighbors.length; i++)
-					if(neighbors[i][3]+(await getTimeToDestination(neighbors[i][1])) <= Empire.countdown)
+					if(neighbors[i][3]+(timeToDestinationMap[neighbors[i][1]]) <= Empire.countdown)
 						heap.push(neighbors[i]);
 
-				// Sort the heap, hitcount then heuristics then traveltime then refueling and passingBy over waiting.
-				heap.sort((nA, nB) => (nA[4] - nB[4]) || (nA[7] - nB[7]) || (nA[3] - nB[3]) || (nA[0] - nB[0]));
+				// Sort the heap !
+				heap.sort((nA, nB) => { 
+					// Watching han solo. We don't want him to sleep drunk at the cantina ! 
+					// Fixing the bug giving always the highest (but valid) wait time available
+					if(nA[0] == 2 && nB[0] == 2){
+						// Smallest wait time first
+						if(nA[2] < nB[2]) return -1;
+						else if(nA[2] > nB[2]) return 1;
+					}
+					// HitCount smallest best
+					if(nA[4] < nB[4]) return -1;
+					else if(nA[4] > nB[4]) return 1;			
+					// Heuristic smallest best
+					if(nA[7] < nB[7]) return -1;
+					else if(nA[7] > nB[7]) return 1;
+					// LoopCount smallest best
+					if(nA[6] < nB[6]) return -1;
+					else if(nA[6] > nB[6]) return 1;																	
+					// NodeType smallest best (passingBy > refueling > waiting)
+					//if(nA[0] < nB[0]) return -1;
+					//else if(nA[0] > nB[0]) return 1;					
+					// TravelTime smallest best
+					if(nA[3] < nB[3]) return -1;
+					else if(nA[3] > nB[3]) return 1;						
+					// Routes are equals regarding our problematic
+					return 0;
+				});
 			}
-
 			winston.warn(`Cannot find a valid path ! Route is ${route.join('->')} and empire countdown ${Empire.countdown} days.`);
 			return false;
 		}catch(err){ 

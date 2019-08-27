@@ -86,7 +86,7 @@ var CliCall = async (dataSet, bufferDb) => {
 		winston.log(`Pulling routes qualifying for a countdown of ${dataSet.Empire.countdown} from buffer db.`);
 		var routes = await bufferDb.getRoutes(dataSet.Empire.countdown);
 
-		winston.log('List of qualifyed routes : ');
+		winston.log('List of qualified routes : ');
 		for(let i = 0; i < routes.length; i++)
 			winston.log(routes[i].route_slug);
 
@@ -100,6 +100,7 @@ var CliCall = async (dataSet, bufferDb) => {
 
 			winston.log('Found a suitable route ! Adding it and sorting resulting array.');
 			routeList.push(routeRes);
+
 			routeList.sort((rA, rB) => {
 				var rALastNode = rA[rA.length-1];
 				var rBLastNode = rB[rB.length-1];

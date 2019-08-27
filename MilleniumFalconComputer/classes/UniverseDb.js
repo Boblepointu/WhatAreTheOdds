@@ -46,6 +46,35 @@ module.exports = function(DbPath){
 		return (await db.selectRequest(
 			`SELECT * FROM routes 
 				WHERE (destination=? OR origin=?) AND travel_time<=?`, [planet, planet, maxTravelTime]));
+	}
+
+	this.getNextLinks = async (route, from) => {
+		winston.log(`Querying next possible links for route ${route.join('->')}, from ${from}.`);
+
+		var wrkRoute = route.slice(0);
+		wrkRoute.splice(wrkRoute.indexOf(from));
+		wrkRoute.push(route[route.indexOf(from)+1]);
+
+		var wrkRouteStr = "(";
+		wrkRoute.forEach(planet => wrkRouteStr+=`'${planet}',`);
+		wrkRouteStr = wrkRouteStr.substring(0, wrkRouteStr.length-1);
+		wrkRouteStr+=")";
+		var loopLinks = (await db.selectRequest(
+			`SELECT * FROM routes 
+				WHERE 
+					(destination=? AND origin IN ${wrkRouteStr}) 
+					OR 
+					(origin=? AND destination IN ${wrkRouteStr})`, [from, from]));
+		var curatedLoopLinks = loopLinks.map(link => {
+			let result = [];
+			link.origin != from ? result[0] = link.origin : 0;
+			link.destination != from ? result[0] = link.destination : 0;
+			result[1] = link.travel_time;
+			result[2] = (route[route.indexOf(from)+1] == result[0]) ? false : true;
+			return result;
+		});
+
+		return curatedLoopLinks;
 	}	
 
 	this.getLinksCount = async () => {
