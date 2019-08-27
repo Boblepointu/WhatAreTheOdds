@@ -225,8 +225,6 @@ module.exports = function(){
 			// Simplified A* algorithm. We only look to go forward; so we don't need to store closed nodes.
 			// Only a heap is needed.
 			var heap = [];
-			// Complete paths
-			var completePaths = [];
 			// For sake of performance, we use array to define our nodes
 			// [ type(0=passingBy,1=refueling,2=waiting), planetName, actionDuration, totalTravelTime, 
 			// totalBhCrossed, remainingFuel, loopCount, heuristics, parent ]
