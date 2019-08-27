@@ -95,7 +95,7 @@ module.exports = function(){
 			if(!routeQueueCount){
 				winston.log(`No route in queue. Initialising it.`);
 				// Initialising queue by adding a route with one node, MFalcon.departure
-				await BufferDb.addRoutesToQueue([[MFalcon.departure]]);
+				await BufferDb.addRoutesToQueue([{ route: [MFalcon.departure], additional_waypoints: []}]);
 			}
 			let pullSize = Math.ceil(Params.ExploreBatchSize / 100);
 			// Simple adapted batch Djikstra. Find all routes in graph.
@@ -121,26 +121,32 @@ module.exports = function(){
 				// If we got no route, the search is finished. Breaking the loop.
 				if(!routesBuffer.length) break;
 				// Get the next available routes in buffer (ordered by closest to destination then smaller hops from departure)
-				let currRoute = routesBuffer.shift();
+				let fullRoute = routesBuffer.shift();
 				// Getting back links associated with last planet in route
-				let links = await UniverseWorkDb.getLinksWithPlanet(currRoute[currRoute.length-1], MFalcon.autonomy);
+				let links = await UniverseWorkDb.getLinksWithPlanet(fullRoute.route[fullRoute.route.length-1], MFalcon.autonomy);
 				// Extracting all planet names from these links
 				let planets = links.map(link => link.origin).concat(links.map(link => link.destination));
+				// Filtering these planet name, including them for additional waypoints if already in route
+				let additional_neighbors = planets.filter(planet => fullRoute.route.indexOf(planet) != -1 && fullRoute.route.indexOf(planet) != fullRoute.route.length-1);
+				// Dedup; in case of multiple links between planets
+				additional_neighbors = [...new Set(additional_neighbors)];
+				// Format and save
+				additional_neighbors.forEach(additionalNeighbor => fullRoute.additional_waypoints.push([fullRoute.route[fullRoute.route.length-1], additionalNeighbor]));
 				// Filtering these planet name, excluding them if they are already in the current route
-				let neighbors = planets.filter(planet => currRoute.indexOf(planet) == -1);
+				let neighbors = planets.filter(planet => fullRoute.route.indexOf(planet) == -1);
 				// For each neighbor
 				for(let i = 0; i < neighbors.length; i++){
 					let currNeighbor = neighbors[i];
 					// Duplicate our route
-					let newRoute = currRoute.slice(0);
+					let newRoute = {route: fullRoute.route.slice(0), additional_waypoints: JSON.parse(JSON.stringify(fullRoute.additional_waypoints))};
 					// Add current neighbor to it
-					newRoute.push(currNeighbor);
+					newRoute.route.push(currNeighbor);
 					// If current neighbor is equal to MFalcon.arrival and route is not already saved in database
-					if(currNeighbor == MFalcon.arrival && !(await BufferDb.isRouteAlreadyInDb(newRoute))){
+					if(currNeighbor == MFalcon.arrival && !(await BufferDb.isRouteAlreadyInDb(newRoute.route))){
 						// Get minimum travel time
-						let minimumTravelTime = await getMinimumTravelTime(newRoute);
+						let minimumTravelTime = await getMinimumTravelTime(newRoute.route);
 						// Then we got a new route ! Log it
-						winston.log(`${newRoute.length - 1} hops, ${minimumTravelTime} days: ${newRoute.join('->')}.`);
+						winston.log(`${newRoute.route.length - 1} hops, ${minimumTravelTime} days: ${newRoute.route.join('->')}.`);
 						// Insert route to buffer database
 						await BufferDb.insertRoute(newRoute, minimumTravelTime);
 					}

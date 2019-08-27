@@ -23,9 +23,8 @@ var ApiWorker = function(){
 	this.spawn = () => {
 		return new Promise((resolve, reject) => {
 			try{
-				var cwd = `${AppDir}`;
-				winston.log(`Spawning api worker thread into (${cwd})`);
-				childHandler = Spawn('node', ['back-api-worker.js'], { cwd: cwd, stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ] });
+				winston.log(`Spawning api worker thread into (${AppDir})`);
+				childHandler = Spawn('node', ['back-api-worker.js'], { cwd: AppDir, stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ] });
 
 				childHandler.stdout.once('data', resolve);
 

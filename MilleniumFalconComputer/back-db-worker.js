@@ -48,7 +48,7 @@ const main = async () => {
 			workSetStatus.precomputed = 1;
 			workSetStatus.travelable = travelable ? 1 : 0;
 			winston.log(`Marking this workset as ${travelable ? 'travelable' : ' not travelable'} and precomputed.`);
-			await bufferDb.updateWorkSetStatus(workSetStatus);
+			//await bufferDb.updateWorkSetStatus(workSetStatus);
 		}
 
 		if(!workSetStatus.travelable){
@@ -61,7 +61,7 @@ const main = async () => {
 			await pathFinder.explore(universeWorkDb, bufferDb, DataSet.MFalcon);
 			workSetStatus.explored = 1;
 			winston.log(`Marking this workset as explored.`);
-			await bufferDb.updateWorkSetStatus(workSetStatus);
+			//await bufferDb.updateWorkSetStatus(workSetStatus);
 			winston.log(`WorkSet universe is now fully explored (in the limit of the configuration 'MaxPrecalculatedRoutes' entry).`);
 		}
 

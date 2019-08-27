@@ -11,5 +11,5 @@
 	, "AllowAllAccessControlOrigins": 1
 	, "MaxSentRouteToClient": 500
 	, "MaxPrecalculatedRoutes": 300000
-	, "ExploreBatchSize": 10000
+	, "ExploreBatchSize": 1
 }
